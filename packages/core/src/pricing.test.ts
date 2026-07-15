@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { basisPoints, cents } from "./money.js";
-import { priceFromCost } from "./pricing.js";
+import { lineTotal, priceFromCost } from "./pricing.js";
 
 describe("priceFromCost", () => {
   it("applies a 25% markup to a round cost", () => {
@@ -31,5 +31,33 @@ describe("priceFromCost", () => {
 
   it("handles a large cost without losing precision", () => {
     expect(priceFromCost(cents(1_000_000), basisPoints(2500))).toBe(1_250_000);
+  });
+});
+
+describe("lineTotal", () => {
+  it("multiplies price by a whole quantity", () => {
+    expect(lineTotal(cents(2500), 2)).toBe(5000);
+  });
+
+  it("supports a fractional quantity", () => {
+    expect(lineTotal(cents(2500), 2.5)).toBe(6250);
+  });
+
+  it("returns zero for a zero quantity", () => {
+    expect(lineTotal(cents(2500), 0)).toBe(0);
+  });
+
+  // 2000 * 0.1 is 200.00000000000003 in float64. Rounding at the multiplication
+  // is what stops that drift from ever reaching a stored total.
+  it("absorbs float drift from a fractional quantity", () => {
+    expect(lineTotal(cents(2000), 0.1)).toBe(200);
+  });
+
+  it("rejects a negative quantity", () => {
+    expect(() => lineTotal(cents(2500), -1)).toThrow(RangeError);
+  });
+
+  it("rejects a non-finite quantity", () => {
+    expect(() => lineTotal(cents(2500), Number.POSITIVE_INFINITY)).toThrow(RangeError);
   });
 });

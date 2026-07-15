@@ -15,3 +15,17 @@ export function priceFromCost(unitCost: Cents, markup: BasisPoints): Cents {
   }
   return cents(roundHalfUp((unitCost * (BASIS_POINTS_SCALE + markup)) / BASIS_POINTS_SCALE));
 }
+
+/**
+ * Extends a unit price across a quantity.
+ *
+ * Quantity is a float because trades bill in fractions — 2.5 hours, 13.75 feet.
+ * The rounding here is load-bearing: it is what keeps float drift out of the
+ * integer sums performed by documentTotals.
+ */
+export function lineTotal(unitPrice: Cents, quantity: number): Cents {
+  if (!Number.isFinite(quantity) || quantity < 0) {
+    throw new RangeError(`Quantity must be a non-negative finite number, received ${quantity}`);
+  }
+  return cents(roundHalfUp(unitPrice * quantity));
+}
