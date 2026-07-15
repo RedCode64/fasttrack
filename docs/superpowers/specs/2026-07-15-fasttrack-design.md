@@ -46,6 +46,8 @@ These are settled. Reversing any of them is expensive.
 | 4 | **Offline-first** | Local SQLite is source of truth; sync engine required |
 | 5 | **Job-first spine** | `Job` is the top-level entity; estimates, invoices, expenses, photos hang off it |
 | 6 | **Apple IAP at 15%**, not external purchase links | See §7 |
+| 7 | **Jobs are created implicitly from estimates** | No Jobs tab on mobile. Drafting an estimate creates the job (`client_id` + `title`); conversion carries `job_id` to the invoice; expenses pick from existing jobs or "Overhead". The schema stays job-first; the mobile IA is estimate-first. |
+| 8 | **Client-facing documents show prices only** | Markup stays embedded in `unit_price_cents`. Cost never leaves the business. Lines are *grouped* by kind (materials/labor/other) on the PDF, but no "markup" line is ever rendered. Reverse this only if cost-plus contracts are supported. |
 
 ---
 
@@ -102,8 +104,10 @@ organizations    id, name, logo_url, address, license_no, trade, tax_config, cre
 users            id, email, name
 memberships      id, org_id, user_id, role
 clients          id, org_id, name, email, phone, address, notes, deleted_at, updated_at
-jobs             id, org_id, client_id, title, address, status, scheduled_at,
+jobs             id, org_id, client_id, title, address, scheduled_at,
+                 status(lead|quoted|in_progress|complete|lost),
                  notes, deleted_at, updated_at
+                 -- created implicitly by the first estimate drafted (decision 7)
 price_book_items id, org_id, kind(material|labor), name, unit, unit_cost_cents,
                  default_markup_pct, deleted_at, updated_at
 estimates        id, org_id, job_id, number, status(draft|sent|viewed|accepted|declined|expired),
@@ -117,7 +121,8 @@ invoices         id, org_id, job_id, converted_from_estimate_id, number,
                  subtotal_cents, tax_cents, discount_cents, total_cents,
                  balance_cents, notes, terms, pdf_url, deleted_at, updated_at
 invoice_lines    (same shape as estimate_lines, invoice_id)
-payments         id, org_id, invoice_id, amount_cents, method(check|cash|zelle|card_other),
+payments         id, org_id, invoice_id, amount_cents,
+                 method(check|cash|zelle|bank_transfer|card_other),
                  paid_at, reference, notes, deleted_at, updated_at
 photos           id, org_id, job_id, estimate_id?, invoice_id?, storage_path,
                  caption, taken_at, deleted_at, updated_at
