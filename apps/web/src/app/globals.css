@@ -1,0 +1,93 @@
+:root {
+  --bg: #eceeea;
+  --ink: #1c2622;
+  --muted: #707b75;
+  --muted-2: #8a938d;
+  --muted-3: #a3aca6;
+  --surface: #fff;
+  --surface-2: #f4f6f2;
+  --hover: #f3f6f2;
+  --border: #e7ebe6;
+  --green: #1c7c4e;
+  --green-dark: #0f5233;
+  --green-bg: #e9f4ec;
+  --red: #cf4b4b;
+  --red-bg: #fbecec;
+  --amber: #b9822a;
+  --amber-bg: #f6eeda;
+  --navy: #17211c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-jakarta), system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--green);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--green-dark);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+::-webkit-scrollbar-thumb {
+  background: #d5dad3;
+  border-radius: 8px;
+  border: 3px solid var(--bg);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(9px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
