@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { cents } from "./money.js";
-import { documentProfit } from "./profitability.js";
+import { documentProfit, type ProfitLine } from "./profitability.js";
 
-const line = (unitCostCents: number, unitPriceCents: number, quantity: number) => ({
+const line = (unitCostCents: number, unitPriceCents: number, quantity: number): ProfitLine => ({
   unitCostCents: cents(unitCostCents),
   unitPriceCents: cents(unitPriceCents),
   quantity,
@@ -47,10 +47,23 @@ describe("documentProfit", () => {
     expect(result.marginBps).toBe(0);
   });
 
+  it("handles a 100% discount: zero revenue, real cost, zero margin — boundary is inclusive", () => {
+    const result = documentProfit([line(100, 200, 1)], cents(200));
+    expect(result.revenueCents).toBe(0);
+    expect(result.profitCents).toBe(-100);
+    expect(result.marginBps).toBe(0);
+  });
+
   it("reports negative profit and margin when priced below cost", () => {
     const result = documentProfit([line(10_000, 8_000, 1)], cents(0));
     expect(result.profitCents).toBe(-2_000);
     expect(result.marginBps).toBe(-2_500);
+  });
+
+  it("rounds negative margins half away from zero", () => {
+    // profit −2001 over revenue 7999 → −2501.56… bps → −2502
+    const result = documentProfit([line(10_000, 7_999, 1)], cents(0));
+    expect(result.marginBps).toBe(-2_502);
   });
 
   it("rejects a negative discount", () => {

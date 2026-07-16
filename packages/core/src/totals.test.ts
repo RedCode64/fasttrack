@@ -70,6 +70,16 @@ describe("documentTotals", () => {
       });
   });
 
+  it("allows a discount equal to the subtotal — the boundary is inclusive", () => {
+    // A 100% discount zeroes the taxable base, so with a zero tax rate nothing is owed.
+    expect(documentTotals([taxable(10_000, 1)], cents(10_000), basisPoints(0))).toEqual({
+      subtotalCents: 10_000,
+      discountCents: 10_000,
+      taxCents: 0,
+      totalCents: 0,
+    });
+  });
+
   it("rejects a negative discount", () => {
     expect(() => documentTotals([taxable(10_000, 1)], cents(-1), basisPoints(0))).toThrow(RangeError);
   });
