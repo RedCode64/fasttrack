@@ -1,8 +1,13 @@
 import type { HealthScore } from "@fasttrack/core";
-import { StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { LayoutAnimation, Platform, Pressable, StyleSheet, Text, UIManager, View } from "react-native";
 import Svg, { Circle, Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 
 import { colors, fonts, spacing } from "@/theme";
+
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const RING_SIZE = 78;
 const RING_STROKE = 10;
@@ -20,11 +25,28 @@ const BAND_RING: Record<HealthScore["band"], string> = {
   risk: "#f2a09b",
 };
 
-/** The Home hero: live decision-B gauge on the design's radial green card. */
+/** The Home hero: live decision-B gauge; tap to reveal the score's three drivers. */
 export function HealthCard({ health }: { readonly health: HealthScore }) {
+  const [open, setOpen] = useState(false);
   const sweep = CIRCUMFERENCE * (health.score / 100);
+
+  const components = [
+    { label: "Margin", weight: "40%", score: health.marginComponent },
+    { label: "Receivables", weight: "30%", score: health.receivablesComponent },
+    { label: "Collection", weight: "30%", score: health.collectionComponent },
+  ] as const;
+
   return (
-    <View style={styles.card}>
+    <Pressable
+      style={styles.card}
+      onPress={() => {
+        LayoutAnimation.easeInEaseOut();
+        setOpen((value) => !value);
+      }}
+      accessibilityRole="button"
+      accessibilityState={{ expanded: open }}
+      accessibilityLabel={`Business health ${health.score}, ${BAND_TITLE[health.band]}. Tap for breakdown.`}
+    >
       <Svg style={StyleSheet.absoluteFill}>
         <Defs>
           <RadialGradient id="heroGrad" cx="15%" cy="10%" rx="140%" ry="130%">
@@ -35,39 +57,60 @@ export function HealthCard({ health }: { readonly health: HealthScore }) {
         <Rect width="100%" height="100%" rx={spacing.heroRadius} fill="url(#heroGrad)" />
       </Svg>
 
-      <View style={styles.ringWrap}>
-        <Svg width={RING_SIZE} height={RING_SIZE}>
-          <Circle
-            cx={RING_SIZE / 2}
-            cy={RING_SIZE / 2}
-            r={RADIUS}
-            stroke="rgba(255,255,255,0.18)"
-            strokeWidth={RING_STROKE}
-            fill="transparent"
-          />
-          <Circle
-            cx={RING_SIZE / 2}
-            cy={RING_SIZE / 2}
-            r={RADIUS}
-            stroke={BAND_RING[health.band]}
-            strokeWidth={RING_STROKE}
-            strokeLinecap="round"
-            fill="transparent"
-            strokeDasharray={`${sweep} ${CIRCUMFERENCE}`}
-            transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
-          />
-        </Svg>
-        <View style={styles.scoreBubble}>
-          <Text style={styles.scoreText}>{health.score}</Text>
+      <View style={styles.row}>
+        <View style={styles.ringWrap}>
+          <Svg width={RING_SIZE} height={RING_SIZE}>
+            <Circle
+              cx={RING_SIZE / 2}
+              cy={RING_SIZE / 2}
+              r={RADIUS}
+              stroke="rgba(255,255,255,0.18)"
+              strokeWidth={RING_STROKE}
+              fill="transparent"
+            />
+            <Circle
+              cx={RING_SIZE / 2}
+              cy={RING_SIZE / 2}
+              r={RADIUS}
+              stroke={BAND_RING[health.band]}
+              strokeWidth={RING_STROKE}
+              strokeLinecap="round"
+              fill="transparent"
+              strokeDasharray={`${sweep} ${CIRCUMFERENCE}`}
+              transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
+            />
+          </Svg>
+          <View style={styles.scoreBubble}>
+            <Text style={styles.scoreText}>{health.score}</Text>
+          </View>
         </View>
+
+        <View style={styles.copy}>
+          <Text style={styles.kicker}>Business health</Text>
+          <Text style={styles.title}>{BAND_TITLE[health.band]}</Text>
+          <Text style={styles.summary}>{health.summary}</Text>
+        </View>
+
+        <Text style={[styles.chevron, open ? styles.chevronOpen : null]}>⌄</Text>
       </View>
 
-      <View style={styles.copy}>
-        <Text style={styles.kicker}>Business health</Text>
-        <Text style={styles.title}>{BAND_TITLE[health.band]}</Text>
-        <Text style={styles.summary}>{health.summary}</Text>
-      </View>
-    </View>
+      {open ? (
+        <View style={styles.breakdown}>
+          <Text style={styles.breakdownHint}>Score = 40% Margin + 30% Receivables + 30% Collection</Text>
+          {components.map((component) => (
+            <View key={component.label} style={styles.compRow}>
+              <Text style={styles.compLabel}>
+                {component.label} · {component.weight}
+              </Text>
+              <View style={styles.compTrack}>
+                <View style={[styles.compFill, { width: `${component.score}%` }]} />
+              </View>
+              <Text style={styles.compScore}>{component.score}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </Pressable>
   );
 }
 
@@ -78,10 +121,12 @@ const styles = StyleSheet.create({
     borderRadius: spacing.heroRadius,
     padding: 19,
     paddingHorizontal: 20,
+    overflow: "hidden",
+  },
+  row: {
     flexDirection: "row",
     alignItems: "center",
     gap: 18,
-    overflow: "hidden",
   },
   ringWrap: {
     width: RING_SIZE,
@@ -123,5 +168,55 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans500,
     color: "rgba(255,255,255,0.75)",
     marginTop: 3,
+  },
+  chevron: {
+    fontSize: 18,
+    color: "rgba(255,255,255,0.75)",
+    alignSelf: "flex-start",
+  },
+  chevronOpen: {
+    transform: [{ rotate: "180deg" }],
+  },
+  breakdown: {
+    marginTop: 15,
+    paddingTop: 13,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.16)",
+    gap: 9,
+  },
+  breakdownHint: {
+    fontSize: 11,
+    fontFamily: fonts.sans600,
+    color: "rgba(255,255,255,0.6)",
+  },
+  compRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  compLabel: {
+    width: 118,
+    fontSize: 11.5,
+    fontFamily: fonts.sans600,
+    color: "rgba(255,255,255,0.85)",
+  },
+  compTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    overflow: "hidden",
+  },
+  compFill: {
+    height: "100%",
+    borderRadius: 3,
+    backgroundColor: colors.mint,
+  },
+  compScore: {
+    width: 26,
+    textAlign: "right",
+    fontSize: 12,
+    fontFamily: fonts.mono700,
+    color: colors.surface,
   },
 });

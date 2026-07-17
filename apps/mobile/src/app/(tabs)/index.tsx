@@ -55,12 +55,21 @@ export default function Home() {
                 ? colors.red
                 : colors.green
             }
+            detail={[
+              { label: "This month", value: money(kpis.data.revenueCents) },
+              { label: "vs last month", value: deltaLabel(kpis.data.revenueDeltaPct) },
+            ]}
           />
           <StatCard
             label="Net profit"
             value={money(kpis.data.netProfitCents)}
             sub={`${pctFromBps(kpis.data.marginBps)} margin`}
             subColor={kpis.data.netProfitCents >= 0 ? colors.green : colors.red}
+            detail={[
+              { label: "Revenue", value: money(kpis.data.revenueCents) },
+              { label: "Spend", value: money(kpis.data.spendCents) },
+              { label: "Margin", value: `${pctFromBps(kpis.data.marginBps)}` },
+            ]}
           />
           <StatCard
             label="Spend"
@@ -71,6 +80,10 @@ export default function Home() {
                 ? colors.red
                 : colors.green
             }
+            detail={[
+              { label: "This month", value: money(kpis.data.spendCents) },
+              { label: "vs last month", value: deltaLabel(kpis.data.spendDeltaPct) },
+            ]}
           />
           <StatCard
             label="Outstanding"
@@ -81,6 +94,10 @@ export default function Home() {
                 : "Nothing overdue"
             }
             subColor={kpis.data.overdueCents > 0 ? colors.red : colors.green}
+            detail={[
+              { label: "Total open", value: money(kpis.data.outstandingCents) },
+              { label: "Overdue", value: money(kpis.data.overdueCents) },
+            ]}
           />
         </View>
       ) : null}
