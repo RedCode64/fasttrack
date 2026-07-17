@@ -17,6 +17,7 @@
     "@fasttrack/core": "workspace:*",
     "@fasttrack/rollups": "workspace:*",
     "@fasttrack/schema": "workspace:*",
+    "@supabase/supabase-js": "^2.58.0",
     "expo": "~57.0.6",
     "expo-asset": "~57.0.5",
     "expo-constants": "~57.0.5",
