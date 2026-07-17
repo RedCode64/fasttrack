@@ -1,11 +1,12 @@
 import { useRouter } from "expo-router";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ActivityRow } from "@/components/ActivityRow";
 import { EmptyState } from "@/components/EmptyState";
 import { HealthCard } from "@/components/HealthCard";
 import { StatCard } from "@/components/StatCard";
 import { GhostButton, PrimaryButton } from "@/components/ui/Buttons";
+import { Icon } from "@/components/ui/Icon";
 import { useDb, useQuery } from "@/db/DbProvider";
 import { activity, healthForOrg, monthKpis } from "@/db/repos/kpis";
 import { deltaLabel, greeting, money, moneyK, monthLabel, pctFromBps } from "@/lib/format";
@@ -26,10 +27,19 @@ export default function Home() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.kicker}>
-          {org.name.toUpperCase()} · {monthLabel(nowIso)}
-        </Text>
-        <Text style={styles.title}>{greeting(new Date().getHours())}</Text>
+        <View style={styles.headerText}>
+          <Text style={styles.kicker}>
+            {org.name.toUpperCase()} · {monthLabel(nowIso)}
+          </Text>
+          <Text style={styles.title}>{greeting(new Date().getHours())}</Text>
+        </View>
+        <Pressable
+          style={styles.cloudButton}
+          onPress={() => router.push("/sync")}
+          accessibilityLabel="Cloud sync"
+        >
+          <Icon name="cloud" size={19} color={colors.slate} />
+        </Pressable>
       </View>
 
       {health.data ? <HealthCard health={health.data.health} /> : null}
@@ -125,6 +135,23 @@ const styles = StyleSheet.create({
     paddingTop: spacing.screenTop,
     paddingHorizontal: spacing.screenX,
     paddingBottom: 8,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+  },
+  headerText: {
+    flexShrink: 1,
+  },
+  cloudButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderCircle,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
   },
   kicker: {
     fontSize: 10.5,

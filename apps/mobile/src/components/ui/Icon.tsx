@@ -15,6 +15,7 @@ const STROKE_PATHS = {
   alert: ["M12 3l9 16H3z", "M12 10v4", "M12 17h.01"],
   pdf: ["M7 3h7l4 4v14H7z", "M14 3v4h4"],
   cam: ["M4 8h3l1.5-2h7L17 8h3v11H4z", "M12 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"],
+  cloud: ["M7 18a4.5 4.5 0 0 1-.5-8.97A6 6 0 0 1 18.2 10.3 4 4 0 0 1 17.5 18z", "M12 16v-5", "M9.5 13.5 12 11l2.5 2.5"],
 } as const satisfies Record<string, readonly string[]>;
 
 /** The one filled glyph (the FastTrack bolt). */
