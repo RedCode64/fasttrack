@@ -81,7 +81,15 @@ export async function pushAll(
   await target.upsert("users", [{ id: user.id, email: user.email, name: user.name }], {
     onConflict: "id",
   });
-  await target.upsert("organizations", orgBatch.rows, { onConflict: "id" });
+  // insert-or-skip: the org INSERT policy is WITH CHECK (true), but its UPDATE
+  // policy demands existing membership. A plain upsert (merge) takes the UPDATE
+  // path whenever the org row already exists and fails RLS during bootstrap,
+  // before the owner membership is created. Skipping on conflict keeps the push
+  // on the INSERT path and idempotent.
+  await target.upsert("organizations", orgBatch.rows, {
+    onConflict: "id",
+    ignoreDuplicates: true,
+  });
   await target.upsert(
     "memberships",
     [{ id: ctx.newId(), org_id: org.id, user_id: user.id, role: "owner" }],

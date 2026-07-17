@@ -71,6 +71,8 @@ describe("pushAll", () => {
     });
     expect(calls[0]?.table).toBe("users");
     expect(calls[1]?.table).toBe("organizations");
+    expect(calls[1]?.onConflict).toBe("id");
+    expect(calls[1]?.ignoreDuplicates).toBe(true); // insert-or-skip: never the members-only UPDATE path
     expect(calls[2]?.table).toBe("memberships");
     expect(calls[2]?.onConflict).toBe("org_id,user_id");
     expect(calls[2]?.ignoreDuplicates).toBe(true);
