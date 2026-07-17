@@ -86,14 +86,14 @@ apps/mobile/
 
 ## Execution order (commit per group)
 
-- [ ] 1. **Scaffold** — `create-expo-app` into `apps/mobile`, trim template, add deps (expo-sqlite, expo-print, expo-sharing, expo-image-picker, expo-file-system, react-native-svg, expo-crypto, fonts; dev: vitest, sql.js), theme.ts, vitest config, root `pnpm install`. Verify: `pnpm --filter mobile exec tsc --noEmit`, placeholder vitest green, `pnpm --filter mobile exec expo export --platform web` bundles. Fallback if Metro chokes on pnpm symlinks: root `.npmrc` `node-linker=hoisted` (re-verify web app still builds).
-- [ ] 2. **DB core** — driver interface, sqlJsDriver, schema DDL, migration runner, template/category seeds (port from plan-2 doc §migration 6). Tests: migration idempotence, seed counts per trade, boundary parse of a written row (`timestampField` accepts `now()` output — catches format drift).
-- [ ] 3. **Repos (TDD, the money surface)** — org/client/estimate/invoice/expense/kpis per domain rules above. Tests per op: numbering starts 1001 + sequential per org; implicit job created `quoted`; price-book line snapshot equals `priceFromCost`; totals persist = `documentTotals`; convert copies lines + backlink + totals, send sets dates + job `in_progress`; payment transitions partial→paid, balance signed; overdue derived not written; soft-deleted rows vanish everywhere; monthKpis + healthInputs feed `healthScore` (mirror web rollups.ts definitions); expo web/native drivers untouched by tests.
-- [ ] 4. **Shell + onboarding + Home** — `_layout` (fonts, DbProvider, gate), onboarding (+ dev demo seed), tabs with design icons, Home screen fully live (ring, KPIs, actions, activity). Verify in Expo web preview (Browser pane) with demo data; empty-state pass without it.
-- [ ] 5. **Estimates + PDF** — list, new flow, builder with live `documentProfit` hero, line modal + price-book picker, `pdf.ts` + tests (prices only, grouped by kind — decision 8), Preview/Send wiring via printPdf.
-- [ ] 6. **Invoices** — list + chips + derived overdue, detail banner variants, send, record-payment sheet, View PDF, Convert CTA on accepted estimates.
-- [ ] 7. **Expenses** — list + month/week card, capture form with photo copy into `documentDirectory/receipts/`, category/job pickers, billable toggle, edit.
-- [ ] 8. **Verify + record** — full root `pnpm test` + `pnpm typecheck`, `expo export` both platforms, Browser-pane walkthrough + screenshots of all screens vs design, execution record appended here, memory updated, final commit.
+- [x] 1. **Scaffold** — `create-expo-app` into `apps/mobile`, trim template, add deps (expo-sqlite, expo-print, expo-sharing, expo-image-picker, expo-file-system, react-native-svg, expo-crypto, fonts; dev: vitest, sql.js), theme.ts, vitest config, root `pnpm install`. Verify: `pnpm --filter mobile exec tsc --noEmit`, placeholder vitest green, `pnpm --filter mobile exec expo export --platform web` bundles. Fallback if Metro chokes on pnpm symlinks: root `.npmrc` `node-linker=hoisted` (re-verify web app still builds).
+- [x] 2. **DB core** — driver interface, sqlJsDriver, schema DDL, migration runner, template/category seeds (port from plan-2 doc §migration 6). Tests: migration idempotence, seed counts per trade, boundary parse of a written row (`timestampField` accepts `now()` output — catches format drift).
+- [x] 3. **Repos (TDD, the money surface)** — org/client/estimate/invoice/expense/kpis per domain rules above. Tests per op: numbering starts 1001 + sequential per org; implicit job created `quoted`; price-book line snapshot equals `priceFromCost`; totals persist = `documentTotals`; convert copies lines + backlink + totals, send sets dates + job `in_progress`; payment transitions partial→paid, balance signed; overdue derived not written; soft-deleted rows vanish everywhere; monthKpis + healthInputs feed `healthScore` (mirror web rollups.ts definitions); expo web/native drivers untouched by tests.
+- [x] 4. **Shell + onboarding + Home** — `_layout` (fonts, DbProvider, gate), onboarding (+ dev demo seed), tabs with design icons, Home screen fully live (ring, KPIs, actions, activity). Verify in Expo web preview (Browser pane) with demo data; empty-state pass without it.
+- [x] 5. **Estimates + PDF** — list, new flow, builder with live `documentProfit` hero, line modal + price-book picker, `pdf.ts` + tests (prices only, grouped by kind — decision 8), Preview/Send wiring via printPdf.
+- [x] 6. **Invoices** — list + chips + derived overdue, detail banner variants, send, record-payment sheet, View PDF, Convert CTA on accepted estimates.
+- [x] 7. **Expenses** — list + month/week card, capture form with photo copy into `documentDirectory/receipts/`, category/job pickers, billable toggle, edit.
+- [x] 8. **Verify + record** — full root `pnpm test` + `pnpm typecheck`, `expo export` both platforms, Browser-pane walkthrough + screenshots of all screens vs design, execution record appended here, memory updated, final commit.
 
 ## Acceptance
 
@@ -114,3 +114,21 @@ apps/mobile/
 - **sql.js wasm on Expo web** — if Metro wasm bundling fights back, web preview may degrade; device (Expo Go) + Node tests remain the verification floor. Native path uses expo-sqlite regardless.
 - **Expo SDK drift** — create-expo-app resolves the current matrix; user's Expo Go must be current. No native modules outside Expo Go's set (decision D holds; PowerSync deferred).
 - **Template duplication** — price-book templates now live in Postgres *and* `seeds/priceBookTemplates.ts`; acceptable until Plan 5 sync, noted for reconciliation there.
+
+---
+
+## Execution record — 2026-07-16/17
+
+**Shipped** in 7 commits on `feat/core-money-engine` (`afa74da`…): Expo **SDK 57** app (RN 0.86, React 19.2, TS 6.0, expo-router, React Compiler on) with the full 4-tab product. 87 mobile tests across 17 files (drivers, migrations, seeds, all repos, kpis/health mirror, pdf, format/parse, demo seed); root turbo gates green (6/6 test, 6/6 typecheck incl. core 51 + schema 60); `expo export` clean for **android + ios + web**.
+
+**Verified in the browser pane** (sql.js web driver, demo dataset): onboarding → seeded org; Home gauge live at **score 78** ("Good — collections lagging invoicing", never the mock's 72) with engine-exact KPIs (revenue $19,820 = Σ July invoices); pipeline list; builder hero equals `documentProfit` (price-book pick $420 +35% → $567, margin 26% = the repo-test's 2593 bps); invoice list INV-1001…1006 with derived overdue (Hartley/Ramos) and partial (Whitfield); record-payment walked Ramos overdue → paid, balance $0; expense capture added $57.80 and both spend aggregates moved by exactly that.
+
+**Deviations & notes**
+- `experiments.typedRoutes` **disabled**: the SDK 57 dev-server watcher generated corrupt route types (junk `/../db/…` entries) that broke tsc on every file change; build-time generation was fine. Dynamic hrefs use the object form throughout.
+- Browser-pane `screenshot` times out against this app (renderer quirk); verification is DOM-text-based in-session, visual on device via Expo Go (`pnpm --filter mobile start`, scan QR).
+- RN-web Pressables don't respond to the pane's synthetic clicks; drove the UI with a dispatched pointerdown/up/click sequence (documented in session transcript).
+- Category is `Fuel` (DB seed truth), not the mock's "Fuel & Vehicle". Whitfield's demo invoice keeps a future due date so it *displays* partial — past-due-partial derives to overdue by rule, which supersedes the mock.
+- `apps/web` `test` script gained `--passWithNoTests` (it has no tests; web rollup tests were already deferred to Plan 5) so the root gate is meaningful.
+- Payment-method chip + immediate save in one synchronous JS tick records the pre-render method (test-driver artifact, not an app bug).
+
+**Deferred to Plan 5** (unchanged): sync push + Supabase link, Playwright E2E, web rollup unit tests, template-seed reconciliation, kpis/rollups consolidation into a shared package.
