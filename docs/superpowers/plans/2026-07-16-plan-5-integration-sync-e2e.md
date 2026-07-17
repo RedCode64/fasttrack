@@ -1239,3 +1239,23 @@ Tasks 1–8 implemented and committed (`3e29ccc` → Task 8 commit). Commit chai
 - **Real end-to-end push (Step 2): NOT RUN — needs the user.** Requires creating a fresh Supabase account + email confirmation + Expo Go on a device; account creation and email handling are outside what the agent performs. Everything up to the network round-trip is covered by offline tests (`push.test.ts` exercises collect/transform/bootstrap-order against the real migrated schema via sql.js). Residual unverified surface: the live RLS bootstrap INSERT under a real JWT and PostgREST accepting the row shapes. **User action:** on a device, open Home → cloud icon → Cloud sync → create a throwaway account (real inbox), confirm the email, sign in & push; then verify with the Step-2 SQL and sign into the web dashboard with that account.
 
 **Deferred (known, carried to PowerSync revisit):** receipt/PDF *files* don't sync (only the path/URL strings); no pull/merge (push-only, last-writer-wins on `id`); invoice numbering stays a client-side per-org counter.
+
+---
+
+## Execution record — 2026-07-17 (session 2: live push run, RLS hardening)
+
+The real end-to-end push (Task 9 Step 2, previously "NOT RUN") **was run** and is now **VERIFIED LANDED**. Driving it against live RLS surfaced two failures the offline sql.js tests structurally could not catch, plus the web-preview persistence needed to exercise sign-in-then-reload. Fixes committed on `feat/core-money-engine`:
+
+- `d9ae290` **fix(mobile): authed sync client + idempotent re-push under one-shot RLS bootstrap**
+  - Writes were hitting RLS as `anon` (push reused the sign-in client without the JWT). Added `getAuthedSupabase(accessToken)` — stamps the token on every PostgREST request; `sync.tsx` pushes through it and now requires a session (guards the unconfirmed-email case).
+  - The org/membership bootstrap is one-shot (org UPDATE is members-only; the memberships INSERT `WITH CHECK` runs before `ON CONFLICT DO NOTHING` can skip), so a *second* push threw. `pushAll` now branches on `SyncTarget.hasMembership`: first sync insert-or-skips the org and inserts the owner membership; a re-push merges the org and skips the membership insert. New test covers the re-push path (mobile suite 95 → 96).
+- `d77d13d` **feat(mobile): persist web-preview sql.js DB to IndexedDB so reloads survive** — the browser-pane driver was in-memory only, wiping the books (and forcing onboarding) on every reload, which made verifying sync-then-reload impossible. New optional `SqlDriver.persist()` (web-only) snapshots `db.export()` into IndexedDB after each mutation and restores on open; persist failures are swallowed so they can't lose a landed mutation.
+- `3123246` **fix(mobile): explicit 100% size on absolute-fill SVG heroes for web render** — `react-native-svg` on web doesn't stretch an `absoluteFill` `<Svg>`; the gradient heroes collapsed to 0×0 in preview.
+
+**Live verification (MCP `execute_sql` / `get_advisors` against `sxmazpcygbkyclmclexw`, 2026-07-17):**
+- **Push landed.** Throwaway account `robertop.business@gmail.com` → org **"Rob"** (`8d49884d-7c2f-43ba-b97a-1528fe45fa2d`, created 17:19Z) with the exact fresh-org bootstrap shape: **price_book_items = 9, expense_categories = 8**, clients/jobs/invoices = 0 (nothing entered yet). Membership row present → the live RLS bootstrap INSERT under a real JWT succeeded and PostgREST accepted the transformed row shapes. Demo org (`Reyes Electric`, 8 clients / 12 jobs / 8 invoices) untouched.
+- **Security advisors re-run: PASS.** Same four WARN baseline findings, no new CRITICAL/HIGH: `organizations` INSERT `WITH CHECK (true)`; `org_has_members()` and `user_org_ids()` SECURITY DEFINER helpers callable by `authenticated`; leaked-password protection disabled. All by-design / accepted.
+
+**Gates at end of session 2:** typecheck clean (8 tasks); `pnpm test` green (mobile 96, rollups 8, schema/core cached); `pnpm build` green (all 12 web routes + login/onboarding); `expo export --platform web` clean (18 routes incl. `/sync`). Web Playwright e2e (16/16 in session 1) is unaffected — session-2 commits are mobile-only and web build+typecheck stayed green.
+
+**Residual manual check (optional, non-blocking):** sign into the web dashboard as `robertop.business@gmail.com` to eyeball the pushed org rendering; the SQL above already confirms the rows are present and correctly scoped.
