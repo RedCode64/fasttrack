@@ -15,7 +15,7 @@ async function seededCtx() {
   return { ctx, org };
 }
 
-function fakeTarget() {
+function fakeTarget(existingMember = false) {
   const calls: {
     table: string;
     rows: readonly Record<string, unknown>[];
@@ -30,6 +30,9 @@ function fakeTarget() {
         onConflict: opts.onConflict,
         ignoreDuplicates: opts.ignoreDuplicates ?? false,
       });
+    },
+    async hasMembership() {
+      return existingMember;
     },
   };
   return { target, calls };
@@ -79,6 +82,17 @@ describe("pushAll", () => {
     // A fresh org has rows only in the two seeded tables; empty tables are skipped.
     expect(calls.map((c) => c.table).slice(3)).toEqual(["price_book_items", "expense_categories"]);
     expect(summary.find((s) => s.table === "expense_categories")?.count).toBe(8);
+  });
+
+  it("skips the org/membership bootstrap on re-push when already a member", async () => {
+    const { ctx, org } = await seededCtx();
+    const { target, calls } = fakeTarget(true);
+    await pushAll(target, ctx, org, { id: "user-1", email: "a@b.c", name: "Ana" });
+    // users still synced, org merged (no ignoreDuplicates), no membership insert.
+    expect(calls[0]?.table).toBe("users");
+    expect(calls[1]?.table).toBe("organizations");
+    expect(calls[1]?.ignoreDuplicates).toBe(false); // members-only UPDATE path is allowed now
+    expect(calls.some((c) => c.table === "memberships")).toBe(false);
   });
 
   it("skips empty tables instead of issuing empty upserts", async () => {

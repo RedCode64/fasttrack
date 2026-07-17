@@ -34,6 +34,8 @@ export interface UpsertOptions {
 /** The last inch of network — implemented by supabaseTarget, faked in tests. */
 export interface SyncTarget {
   upsert(table: string, rows: readonly PgRow[], opts: UpsertOptions): Promise<void>;
+  /** True when the signed-in user already owns/belongs to this org (bootstrap done). */
+  hasMembership(orgId: string, userId: string): Promise<boolean>;
 }
 
 export interface LinkedUser {
@@ -61,9 +63,15 @@ export async function collectPush(ctx: DbCtx, orgId: string): Promise<PushBatch[
 }
 
 /**
- * Full idempotent push. Bootstrap mirrors web onboarding (users → org →
- * owner membership; the RLS bootstrap policy admits the first member) and
- * then upserts every data table on id. Never calls seed_price_book /
+ * Full idempotent push. The org/membership bootstrap runs ONLY on first sync
+ * (when the user has no membership yet); re-pushes skip it and merge the org
+ * normally. This split is required because the RLS bootstrap is one-shot:
+ *   - organizations INSERT is `WITH CHECK (true)` but UPDATE is members-only,
+ *     so a merge upsert fails until the owner membership exists;
+ *   - memberships INSERT is `WITH CHECK (… NOT org_has_members)`, and Postgres
+ *     evaluates that check BEFORE `ON CONFLICT DO NOTHING` can skip the row —
+ *     so re-inserting the owner membership throws once the org has members.
+ * Data tables are always upserted on id. Never calls seed_price_book /
  * seed_expense_categories — the local rows ARE the seed.
  */
 export async function pushAll(
@@ -78,23 +86,30 @@ export async function pushAll(
     throw new Error("Nothing to push: no organization row");
   }
 
+  // Own user row is always safe (RLS: id = auth.uid()) and PostgREST needs it
+  // present for the FK from memberships/data rows.
   await target.upsert("users", [{ id: user.id, email: user.email, name: user.name }], {
     onConflict: "id",
   });
-  // insert-or-skip: the org INSERT policy is WITH CHECK (true), but its UPDATE
-  // policy demands existing membership. A plain upsert (merge) takes the UPDATE
-  // path whenever the org row already exists and fails RLS during bootstrap,
-  // before the owner membership is created. Skipping on conflict keeps the push
-  // on the INSERT path and idempotent.
-  await target.upsert("organizations", orgBatch.rows, {
-    onConflict: "id",
-    ignoreDuplicates: true,
-  });
-  await target.upsert(
-    "memberships",
-    [{ id: ctx.newId(), org_id: org.id, user_id: user.id, role: "owner" }],
-    { onConflict: "org_id,user_id", ignoreDuplicates: true },
-  );
+
+  const alreadyMember = await target.hasMembership(org.id, user.id);
+  if (alreadyMember) {
+    // Re-push: membership grants the members-only UPDATE path, so a plain merge
+    // keeps org fields (name, margins, tax) in sync. No membership re-insert.
+    await target.upsert("organizations", orgBatch.rows, { onConflict: "id" });
+  } else {
+    // First sync: insert-or-skip stays on the org INSERT policy (WITH CHECK true),
+    // then the one-shot bootstrap policy admits this user as the owner member.
+    await target.upsert("organizations", orgBatch.rows, {
+      onConflict: "id",
+      ignoreDuplicates: true,
+    });
+    await target.upsert(
+      "memberships",
+      [{ id: ctx.newId(), org_id: org.id, user_id: user.id, role: "owner" }],
+      { onConflict: "org_id,user_id", ignoreDuplicates: true },
+    );
+  }
 
   const summary: PushSummaryEntry[] = [{ table: "organizations", count: orgBatch.rows.length }];
   for (const batch of batches) {
@@ -114,6 +129,18 @@ export function supabaseTarget(client: SupabaseClient): SyncTarget {
         ignoreDuplicates: opts.ignoreDuplicates ?? false,
       });
       if (error) throw new Error(`Sync failed on ${table}: ${error.message}`);
+    },
+    async hasMembership(orgId, userId) {
+      // RLS lets a user read only their own memberships, so this is safe and
+      // returns a row only when the bootstrap already happened.
+      const { data, error } = await client
+        .from("memberships")
+        .select("id")
+        .eq("org_id", orgId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (error) throw new Error(`Sync failed on memberships lookup: ${error.message}`);
+      return data !== null;
     },
   };
 }

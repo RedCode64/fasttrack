@@ -14,7 +14,7 @@ import { PrimaryButton } from "@/components/ui/Buttons";
 import { Icon } from "@/components/ui/Icon";
 import { useDb } from "@/db/DbProvider";
 import { pushAll, supabaseTarget, type PushSummaryEntry } from "@/sync/push";
-import { getSupabase } from "@/sync/supabaseClient";
+import { getAuthedSupabase, getSupabase } from "@/sync/supabaseClient";
 import { colors, fonts, spacing } from "@/theme";
 
 type Phase = "idle" | "authing" | "pushing" | "done" | "error";
@@ -53,10 +53,17 @@ export default function SyncScreen() {
       });
       if (error) throw new Error(error.message);
       const user = data.user;
+      const session = data.session;
       if (!user?.email) throw new Error("Sign-in returned no user");
+      if (!session?.access_token) {
+        throw new Error("Sign-in returned no session — confirm your email, then try again.");
+      }
 
       setPhase("pushing");
-      const result = await pushAll(supabaseTarget(supabase), ctx, org, {
+      // Push through a client that carries the user's token on every request,
+      // so RLS sees `authenticated` (not `anon`) on the very first insert.
+      const authed = getAuthedSupabase(session.access_token);
+      const result = await pushAll(supabaseTarget(authed), ctx, org, {
         id: user.id,
         email: user.email,
         name: org.name,
