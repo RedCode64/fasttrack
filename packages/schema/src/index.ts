@@ -65,3 +65,4 @@ export {
   type ExpenseCategory,
 } from "./expense.js";
 export { photoSchema, signatureSchema, type Photo, type Signature } from "./media.js";
+export { PRICE_BOOK_TEMPLATES, type PriceBookTemplate } from "./priceBookTemplates.js";
