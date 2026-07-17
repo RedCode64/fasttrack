@@ -1,8 +1,16 @@
 import Link from "next/link";
 import { Icon, type IconName } from "@/components/icons";
 import { NavLink } from "@/components/NavLink";
+import { QuickCreate, type CreatableKind } from "@/components/QuickCreate";
 import { SignOutButton } from "@/components/SignOutButton";
-import { countOpenInvoices, getOrgContext } from "@/lib/queries";
+import { countOpenInvoices, getOrgContext, loadCreateOptions } from "@/lib/queries";
+
+/** Which entities each sidebar group can create in place. */
+const GROUP_CREATE: Record<string, CreatableKind[]> = {
+  MONEY: ["budget"],
+  "JOBS & CLIENTS": ["client", "job"],
+  BILLING: ["expense"],
+};
 
 const NAV_GROUPS: { label: string; items: { href: string; name: string; icon: IconName }[] }[] = [
   { label: "OVERVIEW", items: [{ href: "/", name: "Financial Position", icon: "home" }] },
@@ -50,6 +58,7 @@ function initials(name: string): string {
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { orgId, org, userName } = await getOrgContext();
   const openInvoices = await countOpenInvoices(orgId);
+  const createOptions = await loadCreateOptions(orgId);
   const monthChip = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
   return (
@@ -90,13 +99,29 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <div key={group.label} style={{ marginBottom: 15 }}>
               <div
                 style={{
-                  font: "700 10px/1 var(--font-jakarta)",
-                  letterSpacing: ".11em",
-                  color: "var(--muted-3)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                   padding: "0 11px 9px",
                 }}
               >
-                {group.label}
+                <span
+                  style={{
+                    font: "700 10px/1 var(--font-jakarta)",
+                    letterSpacing: ".11em",
+                    color: "var(--muted-3)",
+                  }}
+                >
+                  {group.label}
+                </span>
+                {GROUP_CREATE[group.label] && (
+                  <QuickCreate
+                    label={group.label}
+                    kinds={GROUP_CREATE[group.label]}
+                    clients={createOptions.clients}
+                    categories={createOptions.categories}
+                  />
+                )}
               </div>
               {group.items.map((item) => (
                 <NavLink

@@ -150,6 +150,34 @@ export async function loadDashboardData(orgId: string): Promise<DashboardData> {
   };
 }
 
+export interface NamedOption {
+  id: string;
+  name: string;
+}
+
+export interface CreateOptions {
+  clients: NamedOption[];
+  categories: NamedOption[];
+}
+
+/** Lightweight picker data for the sidebar quick-create forms. */
+export async function loadCreateOptions(orgId: string): Promise<CreateOptions> {
+  const supabase = await createClient();
+  const [clientsRes, categoriesRes] = await Promise.all([
+    supabase.from("clients").select("id,name").eq("org_id", orgId).is("deleted_at", null).order("name"),
+    supabase
+      .from("expense_categories")
+      .select("id,name")
+      .eq("org_id", orgId)
+      .is("deleted_at", null)
+      .order("sort_order"),
+  ]);
+  return {
+    clients: (clientsRes.data ?? []) as NamedOption[],
+    categories: (categoriesRes.data ?? []) as NamedOption[],
+  };
+}
+
 /** Sidebar badge: open (collectible) invoices. */
 export async function countOpenInvoices(orgId: string): Promise<number> {
   const supabase = await createClient();
