@@ -9,6 +9,7 @@ import {
 import {
   convertFromEstimate,
   getInvoice,
+  invoiceForEstimate,
   listInvoices,
   recordPayment,
   sendInvoice,
@@ -104,6 +105,15 @@ describe("convertFromEstimate", () => {
     const { t: t2, estimateId } = await acceptedEstimate();
     await convertFromEstimate(t2.ctx, estimateId);
     await expect(convertFromEstimate(t2.ctx, estimateId)).rejects.toThrow(/already/i);
+  });
+});
+
+describe("invoiceForEstimate", () => {
+  it("resolves the converted invoice id, and null before conversion", async () => {
+    const { t, estimateId } = await acceptedEstimate();
+    expect(await invoiceForEstimate(t.ctx, estimateId)).toBeNull();
+    const invoice = await convertFromEstimate(t.ctx, estimateId);
+    expect(await invoiceForEstimate(t.ctx, estimateId)).toBe(invoice.id);
   });
 });
 

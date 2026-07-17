@@ -228,6 +228,20 @@ export async function recordPayment(
   });
 }
 
+/** Id of the invoice converted from an estimate, or null — powers the
+ * builder's Convert vs View-invoice CTA. */
+export async function invoiceForEstimate(
+  ctx: DbCtx,
+  estimateId: string,
+): Promise<string | null> {
+  const rows = await ctx.driver.exec(
+    "SELECT id FROM invoices WHERE converted_from_estimate_id = ? AND deleted_at IS NULL",
+    [estimateId],
+  );
+  const first = rows[0];
+  return first ? String(first.id) : null;
+}
+
 const LIST_BASE = `
   SELECT i.*, c.name AS __client_name,
     CASE WHEN i.status IN ('sent', 'viewed', 'partial')

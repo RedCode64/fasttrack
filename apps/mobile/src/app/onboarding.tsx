@@ -14,6 +14,7 @@ import { GhostButton, PrimaryButton } from "@/components/ui/Buttons";
 import { useDb } from "@/db/DbProvider";
 import { createOrg } from "@/db/repos/orgRepo";
 import { seedDemo } from "@/db/seeds/demo";
+import { pctToBps } from "@/lib/parse";
 import { colors, fonts, spacing } from "@/theme";
 
 const TRADE_LABELS: Record<Trade, string> = {
@@ -24,13 +25,6 @@ const TRADE_LABELS: Record<Trade, string> = {
   handyman: "Handyman",
   other: "Other",
 };
-
-/** "30" (percent text) → 3000 bps, or null when unparseable. */
-function pctToBps(text: string): number | null {
-  const value = Number.parseFloat(text);
-  if (!Number.isFinite(value)) return null;
-  return Math.round(value * 100);
-}
 
 export default function Onboarding() {
   const { mutate, refreshOrg } = useDb();
