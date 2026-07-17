@@ -17,8 +17,18 @@ export interface PdfLine {
   readonly unitPriceCents: Cents;
 }
 
+/** One recorded payment, already display-formatted by the caller (no cost/markup here). */
+export interface PdfPayment {
+  readonly method: string;
+  readonly paidAt: string;
+  readonly reference: string | null;
+  readonly amountCents: Cents;
+}
+
+export type PdfDocType = "estimate" | "invoice" | "receipt";
+
 export interface PdfDocumentInput {
-  readonly docType: "estimate" | "invoice";
+  readonly docType: PdfDocType;
   readonly docNumber: string;
   readonly orgName: string;
   readonly orgAddress: string | null;
@@ -36,6 +46,10 @@ export interface PdfDocumentInput {
   readonly notes: string | null;
   readonly terms: string | null;
   readonly lines: readonly PdfLine[];
+  /** Present on invoices/receipts that have taken money — drives the payments block. */
+  readonly payments?: readonly PdfPayment[];
+  /** Outstanding balance in cents; when set, the totals show Amount paid + Balance due. */
+  readonly balanceCents?: number | null;
 }
 
 const KIND_ORDER: readonly LineKind[] = ["material", "labor", "other"];
@@ -83,89 +97,200 @@ function kindSection(kind: LineKind, lines: readonly PdfLine[]): string {
     ${rows.map(lineRow).join("")}`;
 }
 
+const HEADINGS: Record<PdfDocType, string> = {
+  estimate: "ESTIMATE",
+  invoice: "INVOICE",
+  receipt: "RECEIPT",
+};
+
+function paymentRow(payment: PdfPayment): string {
+  const ref = payment.reference ? ` · ${esc(payment.reference)}` : "";
+  return `
+    <tr>
+      <td class="pay-method">${esc(payment.method)}${ref}</td>
+      <td class="pay-date">Paid ${shortDate(payment.paidAt)}</td>
+      <td class="num">${m(payment.amountCents)}</td>
+    </tr>`;
+}
+
+const INTRO: Record<PdfDocType, string> = {
+  estimate: "Estimate prepared for your review.",
+  invoice: "Please remit payment by the due date below.",
+  receipt: "This confirms the payment(s) received. Thank you.",
+};
+
+/**
+ * A complete, print-ready HTML document (not a fragment) styled like a real
+ * invoice/receipt. Uses only print-safe CSS — solid fills and borders, table
+ * layout, an @page box — so print engines emit crisp vector text instead of
+ * rasterising the page (which produced the tiled-image PDFs this replaced).
+ */
 export function buildDocumentHtml(input: PdfDocumentInput): string {
-  const heading = input.docType === "invoice" ? "INVOICE" : "ESTIMATE";
+  const heading = HEADINGS[input.docType];
+  const isReceipt = input.docType === "receipt";
+  const billLabel = input.docType === "estimate" ? "Prepared for" : "Bill to";
   const dates = [
     input.issuedAt ? `Issued ${shortDate(input.issuedAt)}` : null,
-    input.dueAt ? `Due ${shortDate(input.dueAt)}` : null,
+    input.dueAt && !isReceipt ? `Due ${shortDate(input.dueAt)}` : null,
   ]
     .filter((d): d is string => d !== null)
-    .join(" · ");
+    .join(" &middot; ");
 
   const taxRow =
     input.taxCents > 0
       ? `<tr><td>${esc(input.taxName)} (${taxRateLabel(input.taxRateBps)})</td><td class="num">${m(input.taxCents)}</td></tr>`
       : "";
 
-  return `
-<div class="page">
-  <style>
-    .page { font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
-            color: #1c2622; padding: 36px 40px; font-size: 13px; }
-    .head { display: flex; justify-content: space-between; align-items: flex-start;
-            border-bottom: 2px solid #1c7c4e; padding-bottom: 16px; }
-    .org { font-size: 19px; font-weight: 800; }
-    .org-meta { color: #707b75; font-size: 11.5px; margin-top: 4px; line-height: 1.5; }
-    .doc { text-align: right; }
-    .doc-type { font-size: 11px; letter-spacing: 2px; color: #1c7c4e; font-weight: 700; }
-    .doc-num { font-size: 17px; font-weight: 700; margin-top: 2px; }
-    .doc-dates { color: #707b75; font-size: 11.5px; margin-top: 4px; }
-    .meta { display: flex; justify-content: space-between; margin: 18px 0 6px; }
-    .label { font-size: 10px; letter-spacing: 1.5px; color: #a3aca6; font-weight: 700; }
-    .value { margin-top: 3px; font-weight: 600; }
-    table { width: 100%; border-collapse: collapse; margin-top: 14px; }
-    th { text-align: left; font-size: 10px; letter-spacing: 1px; color: #a3aca6;
-         border-bottom: 1px solid #e7ebe6; padding: 6px 4px; }
-    td { padding: 7px 4px; border-bottom: 1px solid #f0f2ee; vertical-align: top; }
-    tr.group td { font-weight: 700; color: #1c7c4e; font-size: 11.5px; letter-spacing: 0.5px;
-                  padding-top: 14px; border-bottom: none; }
-    .qty { color: #707b75; white-space: nowrap; }
-    .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-    .totals { width: 45%; margin-left: auto; margin-top: 12px; }
-    .totals td { border-bottom: none; padding: 3px 4px; }
-    .totals .grand td { border-top: 2px solid #1c2622; font-weight: 800; font-size: 15px;
-                        padding-top: 8px; }
-    .notes { margin-top: 22px; color: #5c665f; font-size: 12px; line-height: 1.6; }
-  </style>
-  <div class="head">
-    <div>
-      <div class="org">${esc(input.orgName)}</div>
-      <div class="org-meta">
+  const payments = input.payments ?? [];
+  const hasPayments = payments.length > 0;
+  const amountPaidCents = payments.reduce((sum, p) => sum + p.amountCents, 0);
+  const balanceCents = input.balanceCents ?? input.totalCents - amountPaidCents;
+
+  const paidRows = hasPayments
+    ? `
+    <tr class="paid"><td>Amount paid</td><td class="num">-${m(amountPaidCents)}</td></tr>
+    <tr class="balance"><td>Balance due</td><td class="num">${m(balanceCents)}</td></tr>`
+    : "";
+
+  const stamp = isReceipt ? `<span class="badge">PAID</span>` : "";
+
+  const paymentsSection = hasPayments
+    ? `
+    <div class="pay-label">PAYMENTS</div>
+    <table class="pay"><tbody>${payments.map(paymentRow).join("")}</tbody></table>`
+    : "";
+
+  const notes = [
+    input.notes ? { label: "Notes", body: input.notes } : null,
+    input.terms ? { label: "Terms", body: input.terms } : null,
+  ].filter((n): n is { label: string; body: string } => n !== null);
+
+  const notesBlock = notes
+    .map((n) => `<div class="note"><span class="note-label">${n.label}</span>${esc(n.body)}</div>`)
+    .join("");
+
+  const closing = isReceipt
+    ? "Payment received — thank you for your business."
+    : "Thank you for your business.";
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>${esc(heading)} ${esc(input.docNumber)}</title>
+<style>
+  @page { size: Letter; margin: 0.5in; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
+         color: #1c2622; font-size: 12.5px; line-height: 1.45;
+         -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .doc-type { font-size: 11px; letter-spacing: 3px; color: #1c7c4e; font-weight: 800; }
+  .head { width: 100%; border-collapse: collapse; }
+  .head td { vertical-align: top; padding: 0; }
+  .brand-name { font-size: 22px; font-weight: 800; letter-spacing: -0.4px; color: #14231b; }
+  .brand-meta { color: #6b756e; font-size: 11px; margin-top: 5px; line-height: 1.5; }
+  .doc-cell { text-align: right; white-space: nowrap; }
+  .doc-num { font-size: 20px; font-weight: 800; margin-top: 2px; }
+  .doc-dates { color: #6b756e; font-size: 11px; margin-top: 5px; }
+  .badge { display: inline-block; margin-top: 9px; border: 2px solid #1c7c4e;
+           background: #eef7f1; color: #146c43; font-size: 13px; font-weight: 800;
+           letter-spacing: 2.5px; padding: 4px 13px; border-radius: 5px; }
+  .accent { height: 3px; background: #1c7c4e; border-radius: 2px; margin: 15px 0 0; }
+  .intro { color: #6b756e; font-size: 11.5px; margin-top: 14px; }
+  .parties { width: 100%; border-collapse: collapse; margin-top: 16px; }
+  .parties td { vertical-align: top; padding: 0; }
+  .parties .right { text-align: right; }
+  .label { font-size: 9.5px; letter-spacing: 1.5px; color: #9aa39c; font-weight: 800;
+           text-transform: uppercase; }
+  .party-name { margin-top: 4px; font-weight: 700; font-size: 13.5px; }
+  .party-sub { color: #6b756e; font-size: 11px; margin-top: 2px; }
+  table.items { width: 100%; border-collapse: collapse; margin-top: 22px; }
+  table.items th { text-align: left; font-size: 9.5px; letter-spacing: 1px; color: #9aa39c;
+                   border-bottom: 1.5px solid #1c2622; padding: 0 6px 7px; text-transform: uppercase; }
+  table.items td { padding: 8px 6px; border-bottom: 1px solid #eef1ec; vertical-align: top; }
+  tr.group td { font-weight: 800; color: #1c7c4e; font-size: 10px; letter-spacing: 1px;
+                padding-top: 15px; border-bottom: none; text-transform: uppercase; }
+  .qty { color: #6b756e; white-space: nowrap; }
+  .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .summary { width: 100%; border-collapse: collapse; margin-top: 16px; }
+  .summary > tbody > tr > td { padding: 0; vertical-align: top; }
+  table.totals { width: 58%; margin-left: auto; border-collapse: collapse; }
+  table.totals td { padding: 4px 6px; }
+  table.totals .grand td { border-top: 2px solid #1c2622; font-weight: 800; font-size: 15px;
+                           padding-top: 8px; }
+  table.totals .paid td { color: #1c7c4e; font-weight: 600; }
+  table.totals .balance td { border-top: 1px solid #cfd7cf; font-weight: 800; font-size: 14px;
+                             padding-top: 6px; }
+  .pay-label { font-size: 9.5px; letter-spacing: 1.5px; color: #9aa39c; font-weight: 800;
+               margin-top: 26px; text-transform: uppercase; }
+  table.pay { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  table.pay td { padding: 7px 6px; border-bottom: 1px solid #eef1ec; font-size: 12px;
+                 vertical-align: top; }
+  .pay-method { font-weight: 600; }
+  .pay-date { color: #6b756e; white-space: nowrap; text-align: right; }
+  .footer { margin-top: 26px; border-top: 1px solid #eef1ec; padding-top: 14px; }
+  .note { color: #5c665f; font-size: 11.5px; line-height: 1.55; margin-top: 8px; }
+  .note-label { display: block; font-size: 9.5px; letter-spacing: 1.5px; color: #9aa39c;
+                font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
+  .closing { color: #146c43; font-weight: 700; font-size: 12.5px; margin-top: 16px; }
+</style>
+</head>
+<body>
+  <table class="head"><tbody><tr>
+    <td>
+      <div class="brand-name">${esc(input.orgName)}</div>
+      <div class="brand-meta">
         ${input.orgAddress ? esc(input.orgAddress) + "<br/>" : ""}
         ${input.orgLicense ? "License " + esc(input.orgLicense) : ""}
       </div>
-    </div>
-    <div class="doc">
+    </td>
+    <td class="doc-cell">
       <div class="doc-type">${heading}</div>
       <div class="doc-num">${esc(input.docNumber)}</div>
       <div class="doc-dates">${dates}</div>
-    </div>
-  </div>
-  <div class="meta">
-    <div>
-      <div class="label">PREPARED FOR</div>
-      <div class="value">${esc(input.clientName)}</div>
-      ${input.clientAddress ? `<div class="org-meta">${esc(input.clientAddress)}</div>` : ""}
-    </div>
-    <div style="text-align:right">
-      <div class="label">PROJECT</div>
-      <div class="value">${esc(input.jobTitle)}</div>
-    </div>
-  </div>
-  <table>
+      ${stamp}
+    </td>
+  </tr></tbody></table>
+  <div class="accent"></div>
+  <div class="intro">${INTRO[input.docType]}</div>
+
+  <table class="parties"><tbody><tr>
+    <td>
+      <div class="label">${billLabel}</div>
+      <div class="party-name">${esc(input.clientName)}</div>
+      ${input.clientAddress ? `<div class="party-sub">${esc(input.clientAddress)}</div>` : ""}
+    </td>
+    <td class="right">
+      <div class="label">Project</div>
+      <div class="party-name">${esc(input.jobTitle)}</div>
+    </td>
+  </tr></tbody></table>
+
+  <table class="items">
     <thead>
-      <tr><th>DESCRIPTION</th><th>QTY</th><th style="text-align:right">UNIT PRICE</th><th style="text-align:right">AMOUNT</th></tr>
+      <tr><th>Description</th><th>Qty</th><th class="num">Unit price</th><th class="num">Amount</th></tr>
     </thead>
     <tbody>
       ${KIND_ORDER.map((kind) => kindSection(kind, input.lines)).join("")}
     </tbody>
   </table>
-  <table class="totals">
-    <tr><td>Subtotal</td><td class="num">${m(input.subtotalCents)}</td></tr>
-    ${taxRow}
-    <tr class="grand"><td>Total</td><td class="num">${m(input.totalCents)}</td></tr>
-  </table>
-  ${input.notes ? `<div class="notes"><span class="label">NOTES</span><br/>${esc(input.notes)}</div>` : ""}
-  ${input.terms ? `<div class="notes"><span class="label">TERMS</span><br/>${esc(input.terms)}</div>` : ""}
-</div>`;
+
+  <table class="summary"><tbody><tr><td>
+    <table class="totals"><tbody>
+      <tr><td>Subtotal</td><td class="num">${m(input.subtotalCents)}</td></tr>
+      ${taxRow}
+      <tr class="grand"><td>Total</td><td class="num">${m(input.totalCents)}</td></tr>
+      ${paidRows}
+    </tbody></table>
+  </td></tr></tbody></table>
+  ${paymentsSection}
+
+  <div class="footer">
+    <div class="closing">${closing}</div>
+    ${notesBlock}
+  </div>
+</body>
+</html>`;
 }

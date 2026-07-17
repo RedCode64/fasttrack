@@ -15,7 +15,7 @@ import { GhostButton, PrimaryButton } from "@/components/ui/Buttons";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { useDb, useQuery } from "@/db/DbProvider";
 import { getInvoice, recordPayment, sendInvoice, type DisplayStatus } from "@/db/repos/invoiceRepo";
-import { invoicePdfInput } from "@/lib/docPdf";
+import { invoicePdfInput, receiptPdfInput } from "@/lib/docPdf";
 import { docNumber, money, shortDate } from "@/lib/format";
 import { dollarsToCents } from "@/lib/parse";
 import { buildDocumentHtml } from "@/lib/pdf";
@@ -116,6 +116,10 @@ export default function InvoiceDetailScreen() {
   const viewPdf = () =>
     run(async () => {
       await sharePdf(buildDocumentHtml(invoicePdfInput(org, data)));
+    });
+  const shareReceipt = () =>
+    run(async () => {
+      await sharePdf(buildDocumentHtml(receiptPdfInput(org, data)));
     });
   const send = () =>
     run(async () => {
@@ -281,7 +285,7 @@ export default function InvoiceDetailScreen() {
             <PrimaryButton label="Record payment" icon="wallet" onPress={openPaySheet} disabled={busy} style={styles.actionPrimary} />
           ) : null}
           {status === "paid" ? (
-            <PrimaryButton label="Share receipt" icon="share" onPress={viewPdf} disabled={busy} style={styles.actionPrimary} />
+            <PrimaryButton label="Share receipt" icon="share" onPress={shareReceipt} disabled={busy} style={styles.actionPrimary} />
           ) : null}
         </View>
       )}
