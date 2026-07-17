@@ -7,3 +7,8 @@ coverage/
 .env
 .env.local
 .DS_Store
+.claude/settings.local.json
+
+apps/web/e2e/.auth/
+apps/web/playwright-report/
+apps/web/test-results/
