@@ -14,6 +14,12 @@ export interface SqlDriver {
   execBatch(sql: string): Promise<void>;
   /** BEGIN IMMEDIATE / COMMIT / ROLLBACK bracket. Nesting is a programming error. */
   transaction<T>(fn: () => Promise<T>): Promise<T>;
+  /**
+   * Flush the database to durable storage. Only the web (sql.js) driver
+   * implements this — expo-sqlite writes through on its own, and the in-memory
+   * test driver has nothing to persist. Callers should treat it as optional.
+   */
+  persist?(): Promise<void>;
 }
 
 /**

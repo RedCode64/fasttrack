@@ -62,6 +62,15 @@ export function DbProvider({ children }: { readonly children: ReactNode }) {
     async <T,>(fn: (c: DbCtx) => Promise<T>): Promise<T> => {
       if (!ctx) throw new Error("Database not ready");
       const result = await fn(ctx);
+      // Snapshot to durable storage on web (no-op on device/tests) so the
+      // change survives a reload. A persist failure must not lose the result —
+      // the mutation already landed in the live DB — so swallow it and still
+      // bump the version to refresh the UI.
+      try {
+        await ctx.driver.persist?.();
+      } catch {
+        // best-effort durability; web preview only
+      }
       setVersion((v) => v + 1);
       return result;
     },

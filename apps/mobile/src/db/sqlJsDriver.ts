@@ -5,8 +5,12 @@ import type { SqlDriver, SqlRow, SqlValue } from "./driver";
 /**
  * SqlDriver over a sql.js (wasm) database. Used by vitest on Node and by the
  * Expo web preview — device builds use the expo-sqlite driver instead.
+ *
+ * `persist`, when supplied (web only), is exposed as the driver's `persist()`
+ * so the app can snapshot the database after a mutation. Tests pass nothing and
+ * get a purely in-memory driver.
  */
-export function createSqlJsDriver(db: Database): SqlDriver {
+export function createSqlJsDriver(db: Database, persist?: () => Promise<void>): SqlDriver {
   let inTransaction = false;
 
   async function exec(sql: string, params: readonly SqlValue[] = []): Promise<SqlRow[]> {
@@ -47,7 +51,9 @@ export function createSqlJsDriver(db: Database): SqlDriver {
     }
   }
 
-  return { exec, execBatch, transaction };
+  const driver: SqlDriver = { exec, execBatch, transaction };
+  if (persist) driver.persist = persist;
+  return driver;
 }
 
 let sqlJsInit: Promise<SqlJsStatic> | null = null;
