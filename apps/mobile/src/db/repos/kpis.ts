@@ -1,119 +1,41 @@
-import {
-  basisPoints,
-  cents,
-  documentProfit,
-  healthScore,
-  roundHalfUp,
-  type HealthInputs,
-  type HealthScore,
-} from "@fasttrack/core";
+import { basisPoints, roundHalfUp } from "@fasttrack/core";
+import { computeHealth, type HealthResult } from "@fasttrack/rollups";
 
 import type { DbCtx } from "../driver";
-import { rowToEstimate, rowToEstimateLine, rowToOrganization } from "../mappers";
+import {
+  rowToEstimate,
+  rowToEstimateLine,
+  rowToInvoice,
+  rowToOrganization,
+  rowToPayment,
+} from "../mappers";
 
-/**
- * MIRROR of `apps/web/src/lib/rollups.ts` computeHealth — decision B's inputs
- * derived the same way on both surfaces so the two gauges always agree.
- * Change that file and this one together (Plan 5 consolidates them).
- */
+export type { HealthResult };
 
-const HEALTH_WINDOW_DAYS = 90;
-const DAY_MS = 24 * 60 * 60 * 1000;
-const OPEN_STATUSES = new Set(["sent", "viewed", "partial", "overdue"]);
-
-function withinDays(iso: string | null, now: Date, days: number): boolean {
-  if (!iso) return false;
-  const t = new Date(iso).getTime();
-  return t <= now.getTime() && now.getTime() - t <= days * DAY_MS;
-}
-
-export interface HealthResult {
-  readonly health: HealthScore;
-  readonly inputs: HealthInputs;
-}
-
+/** Same inputs as the web gauge, sourced from local SQLite — one implementation, two surfaces. */
 export async function healthForOrg(ctx: DbCtx, orgId: string): Promise<HealthResult> {
-  const now = new Date(ctx.now());
-
   const orgRows = await ctx.driver.exec("SELECT * FROM organizations WHERE id = ?", [orgId]);
   const orgRow = orgRows[0];
   if (!orgRow) throw new Error("Organization not found");
   const org = rowToOrganization(orgRow);
 
-  // Margin evidence: accepted estimates in the window (R1 realized-margin proxy).
-  const estimateRows = await ctx.driver.exec(
-    "SELECT * FROM estimates WHERE org_id = ? AND deleted_at IS NULL AND status = 'accepted'",
-    [orgId],
-  );
-  let profitSum = 0;
-  let revenueSum = 0;
-  for (const row of estimateRows) {
-    const estimate = rowToEstimate(row);
-    if (!withinDays(estimate.issued_at ?? estimate.created_at, now, HEALTH_WINDOW_DAYS)) {
-      continue;
-    }
-    const lineRows = await ctx.driver.exec(
-      "SELECT * FROM estimate_lines WHERE estimate_id = ? AND deleted_at IS NULL",
-      [estimate.id],
-    );
-    const profit = documentProfit(
-      lineRows.map(rowToEstimateLine).map((l) => ({
-        unitCostCents: l.unit_cost_cents,
-        unitPriceCents: l.unit_price_cents,
-        quantity: l.quantity,
-      })),
-      estimate.discount_cents,
-    );
-    profitSum += profit.profitCents;
-    revenueSum += profit.revenueCents;
-  }
-  const marginBps =
-    revenueSum === 0
-      ? basisPoints(org.target_margin_bps) // no evidence → neutral, not alarming
-      : basisPoints(roundHalfUp((profitSum * 10_000) / revenueSum));
+  const [estimates, estimateLines, invoices, payments] = await Promise.all([
+    ctx.driver.exec("SELECT * FROM estimates WHERE org_id = ? AND deleted_at IS NULL", [orgId]),
+    ctx.driver.exec("SELECT * FROM estimate_lines WHERE org_id = ? AND deleted_at IS NULL", [orgId]),
+    ctx.driver.exec("SELECT * FROM invoices WHERE org_id = ? AND deleted_at IS NULL", [orgId]),
+    ctx.driver.exec("SELECT * FROM payments WHERE org_id = ? AND deleted_at IS NULL", [orgId]),
+  ]);
 
-  const invoiceRows = await ctx.driver.exec(
-    "SELECT status, issued_at, due_at, total_cents, balance_cents FROM invoices WHERE org_id = ? AND deleted_at IS NULL",
-    [orgId],
+  return computeHealth(
+    {
+      estimates: estimates.map(rowToEstimate),
+      estimateLines: estimateLines.map(rowToEstimateLine),
+      invoices: invoices.map(rowToInvoice),
+      payments: payments.map(rowToPayment),
+    },
+    basisPoints(org.target_margin_bps),
+    new Date(ctx.now()),
   );
-  let outstanding = 0;
-  let overdue = 0;
-  let invoiced = 0;
-  for (const row of invoiceRows) {
-    const status = String(row.status);
-    const issuedAt = row.issued_at === null ? null : String(row.issued_at);
-    if (status !== "draft" && withinDays(issuedAt, now, HEALTH_WINDOW_DAYS)) {
-      invoiced += Number(row.total_cents);
-    }
-    if (OPEN_STATUSES.has(status)) {
-      const balance = Math.max(0, Number(row.balance_cents));
-      outstanding += balance;
-      if (row.due_at !== null && new Date(String(row.due_at)).getTime() < now.getTime()) {
-        overdue += balance;
-      }
-    }
-  }
-
-  const paymentRows = await ctx.driver.exec(
-    "SELECT paid_at, amount_cents FROM payments WHERE org_id = ? AND deleted_at IS NULL",
-    [orgId],
-  );
-  let collected = 0;
-  for (const row of paymentRows) {
-    if (withinDays(String(row.paid_at), now, HEALTH_WINDOW_DAYS)) {
-      collected += Number(row.amount_cents);
-    }
-  }
-
-  const inputs: HealthInputs = {
-    marginBps,
-    targetMarginBps: basisPoints(org.target_margin_bps),
-    overdueCents: cents(overdue),
-    outstandingCents: cents(outstanding),
-    collectedCents: cents(collected),
-    invoicedCents: cents(invoiced),
-  };
-  return { health: healthScore(inputs), inputs };
 }
 
 export interface MonthKpis {

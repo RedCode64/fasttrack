@@ -29,6 +29,9 @@ importers:
       '@fasttrack/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@fasttrack/rollups':
+        specifier: workspace:*
+        version: link:../../packages/rollups
       '@fasttrack/schema':
         specifier: workspace:*
         version: link:../../packages/schema
