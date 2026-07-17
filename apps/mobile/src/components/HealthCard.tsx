@@ -47,7 +47,7 @@ export function HealthCard({ health }: { readonly health: HealthScore }) {
       accessibilityState={{ expanded: open }}
       accessibilityLabel={`Business health ${health.score}, ${BAND_TITLE[health.band]}. Tap for breakdown.`}
     >
-      <Svg style={StyleSheet.absoluteFill}>
+      <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
         <Defs>
           <RadialGradient id="heroGrad" cx="15%" cy="10%" rx="140%" ry="130%">
             <Stop offset="0" stopColor={colors.greenDeep} />

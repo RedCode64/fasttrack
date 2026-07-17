@@ -87,7 +87,7 @@ export default function EstimateDetailScreen() {
       </View>
 
       <View style={styles.hero}>
-        <Svg style={StyleSheet.absoluteFill}>
+        <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
           <Defs>
             <RadialGradient id="estGrad" cx="15%" cy="10%" rx="140%" ry="130%">
               <Stop offset="0" stopColor={colors.greenDeep} />
