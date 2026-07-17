@@ -222,7 +222,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               maxWidth: 1200,
               margin: "0 auto",
               padding: "26px 30px 64px",
-              animation: "fadeUp .4s ease",
+              animation: "fadeUp .18s ease",
             }}
           >
             {children}

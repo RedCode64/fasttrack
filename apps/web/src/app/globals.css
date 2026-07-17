@@ -92,6 +92,20 @@ table {
   border-radius: 16px;
 }
 
+@keyframes skeletonPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.skeleton-pulse {
+  animation: skeletonPulse 1.1s ease-in-out infinite;
+}
+
 .nav-link {
   display: flex;
   align-items: center;

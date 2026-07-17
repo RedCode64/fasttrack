@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import {
   budgetSchema,
@@ -56,8 +57,11 @@ export interface OrgContext {
   userName: string;
 }
 
-/** Resolves the signed-in user's org, or routes them to auth/onboarding. */
-export async function getOrgContext(): Promise<OrgContext> {
+/**
+ * Resolves the signed-in user's org, or routes them to auth/onboarding.
+ * Memoized per request so the layout and page share one round-trip instead of two.
+ */
+export const getOrgContext = cache(async function getOrgContext(): Promise<OrgContext> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -95,7 +99,7 @@ export async function getOrgContext(): Promise<OrgContext> {
     org: organizationSchema.parse(orgRow),
     userName: (userRow?.name as string | undefined) ?? user.email ?? "Owner",
   };
-}
+});
 
 export interface DashboardData {
   clients: Client[];
