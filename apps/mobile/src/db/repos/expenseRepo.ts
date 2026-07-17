@@ -145,6 +145,17 @@ export async function updateExpense(
   );
 }
 
+/** Soft delete (spec §4) — the row stays for Plan 5's sync. */
+export async function deleteExpense(ctx: DbCtx, id: string): Promise<void> {
+  const current = await getExpense(ctx, id);
+  if (!current) throw new Error("Expense not found");
+  const now = ctx.now();
+  await ctx.driver.exec(
+    "UPDATE expenses SET deleted_at = ?, updated_at = ? WHERE id = ?",
+    [now, now, id],
+  );
+}
+
 export async function listExpenses(ctx: DbCtx, orgId: string): Promise<ExpenseListRow[]> {
   const rows = await ctx.driver.exec(
     `SELECT e.*, cat.name AS __category_name, j.title AS __job_title

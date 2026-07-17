@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createDraft } from "./estimateRepo";
 import {
   createExpense,
+  deleteExpense,
   getExpense,
   listCategories,
   listExpenses,
@@ -98,6 +99,23 @@ describe("expenseRepo", () => {
     const fetched = await getExpense(t.ctx, expense.id);
     expect(fetched?.amount_cents).toBe(2500);
     expect(fetched?.vendor).toBe("Graybar");
+  });
+
+  it("soft-deletes: gone from reads, row retained", async () => {
+    const { t, orgId, materialsId } = await setup();
+    const expense = await createExpense(t.ctx, orgId, {
+      categoryId: materialsId,
+      amountCents: 5000,
+      spentAt: "2026-07-12",
+      isBillable: false,
+    });
+    await deleteExpense(t.ctx, expense.id);
+    expect(await getExpense(t.ctx, expense.id)).toBeNull();
+    expect(await listExpenses(t.ctx, orgId)).toHaveLength(0);
+    const raw = await t.ctx.driver.exec("SELECT deleted_at FROM expenses WHERE id = ?", [
+      expense.id,
+    ]);
+    expect(raw[0]?.deleted_at).not.toBeNull();
   });
 
   it("sums the calendar month and the trailing 7 days", async () => {
