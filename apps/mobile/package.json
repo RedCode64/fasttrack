@@ -17,6 +17,7 @@
     "@fasttrack/core": "workspace:*",
     "@fasttrack/schema": "workspace:*",
     "expo": "~57.0.6",
+    "expo-asset": "~57.0.5",
     "expo-constants": "~57.0.5",
     "expo-crypto": "~57.0.1",
     "expo-file-system": "~57.0.1",
