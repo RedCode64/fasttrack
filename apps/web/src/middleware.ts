@@ -36,8 +36,13 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isAuthRoute = request.nextUrl.pathname.startsWith("/login");
-  if (!user && !isAuthRoute) {
+  const { pathname } = request.nextUrl;
+  const isAuthRoute = pathname.startsWith("/login");
+  // Publicly reachable without auth — App Store review needs the legal pages
+  // to load for a signed-out reviewer.
+  const isPublicRoute =
+    isAuthRoute || pathname.startsWith("/privacy") || pathname.startsWith("/support");
+  if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
