@@ -17,6 +17,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, type ReactNode } from "react";
 
 import { DbProvider, useDb } from "@/db/DbProvider";
+import { SubscriptionProvider } from "@/subscriptions/SubscriptionProvider";
 import { colors } from "@/theme";
 
 SplashScreen.preventAutoHideAsync();
@@ -63,15 +64,17 @@ export default function RootLayout() {
 
   return (
     <DbProvider>
-      <OnboardingGate>
-        <StatusBar style="dark" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: colors.screenBg },
-          }}
-        />
-      </OnboardingGate>
+      <SubscriptionProvider>
+        <OnboardingGate>
+          <StatusBar style="dark" />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.screenBg },
+            }}
+          />
+        </OnboardingGate>
+      </SubscriptionProvider>
     </DbProvider>
   );
 }
