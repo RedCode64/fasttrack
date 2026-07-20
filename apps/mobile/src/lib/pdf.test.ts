@@ -197,3 +197,18 @@ describe("buildDocumentHtml — invoice with partial payments", () => {
     expect(html).not.toContain(">PAID<");
   });
 });
+
+describe("buildDocumentHtml — free-tier watermark", () => {
+  it("renders the print-safe watermark when watermark is true", () => {
+    const html = buildDocumentHtml({ ...BASE, watermark: true });
+    expect(html).toContain("Made with FastTrack");
+    // print-safe: no CSS transform functions (they force print engines to
+    // rasterise the page). `text-transform` is fine — only rotate/translate/scale hurt.
+    expect(html).not.toMatch(/transform:\s*(rotate|translate|scale|matrix|skew)/);
+  });
+
+  it("omits the watermark when watermark is false or unset", () => {
+    expect(buildDocumentHtml({ ...BASE, watermark: false })).not.toContain("Made with FastTrack");
+    expect(buildDocumentHtml(BASE)).not.toContain("Made with FastTrack");
+  });
+});

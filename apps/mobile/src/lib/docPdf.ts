@@ -41,6 +41,7 @@ function invoiceLikeInput(
   org: Organization,
   detail: InvoiceDetail,
   docType: "invoice" | "receipt",
+  isPro: boolean,
 ): PdfDocumentInput {
   return {
     docType,
@@ -63,10 +64,15 @@ function invoiceLikeInput(
     lines: toPdfLines(detail.lines),
     payments: toPdfPayments(detail.payments),
     balanceCents: detail.invoice.balance_cents,
+    watermark: !isPro,
   };
 }
 
-export function estimatePdfInput(org: Organization, detail: EstimateDetail): PdfDocumentInput {
+export function estimatePdfInput(
+  org: Organization,
+  detail: EstimateDetail,
+  isPro: boolean,
+): PdfDocumentInput {
   return {
     docType: "estimate",
     docNumber: docNumber("EST", detail.estimate.number),
@@ -86,15 +92,24 @@ export function estimatePdfInput(org: Organization, detail: EstimateDetail): Pdf
     notes: detail.estimate.notes,
     terms: detail.estimate.terms,
     lines: toPdfLines(detail.lines),
+    watermark: !isPro,
   };
 }
 
 /** Invoice PDF: shows payments + remaining balance when money has been taken. */
-export function invoicePdfInput(org: Organization, detail: InvoiceDetail): PdfDocumentInput {
-  return invoiceLikeInput(org, detail, "invoice");
+export function invoicePdfInput(
+  org: Organization,
+  detail: InvoiceDetail,
+  isPro: boolean,
+): PdfDocumentInput {
+  return invoiceLikeInput(org, detail, "invoice", isPro);
 }
 
 /** Receipt PDF: same body as the invoice, plus the RECEIPT heading + PAID stamp. */
-export function receiptPdfInput(org: Organization, detail: InvoiceDetail): PdfDocumentInput {
-  return invoiceLikeInput(org, detail, "receipt");
+export function receiptPdfInput(
+  org: Organization,
+  detail: InvoiceDetail,
+  isPro: boolean,
+): PdfDocumentInput {
+  return invoiceLikeInput(org, detail, "receipt", isPro);
 }

@@ -50,6 +50,8 @@ export interface PdfDocumentInput {
   readonly payments?: readonly PdfPayment[];
   /** Outstanding balance in cents; when set, the totals show Amount paid + Balance due. */
   readonly balanceCents?: number | null;
+  /** Free-tier flag: when true, a print-safe "Made with FastTrack" footer is rendered. */
+  readonly watermark?: boolean;
 }
 
 const KIND_ORDER: readonly LineKind[] = ["material", "labor", "other"];
@@ -173,6 +175,10 @@ export function buildDocumentHtml(input: PdfDocumentInput): string {
     ? "Payment received — thank you for your business."
     : "Thank you for your business.";
 
+  const watermarkBlock = input.watermark
+    ? `<div class="watermark">Made with FastTrack</div>`
+    : "";
+
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -235,6 +241,9 @@ export function buildDocumentHtml(input: PdfDocumentInput): string {
   .note-label { display: block; font-size: 9.5px; letter-spacing: 1.5px; color: #9aa39c;
                 font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
   .closing { color: #146c43; font-weight: 700; font-size: 12.5px; margin-top: 16px; }
+  .watermark { margin-top: 20px; padding-top: 12px; border-top: 1px solid #eef1ec;
+               text-align: center; font-size: 9.5px; letter-spacing: 2px; color: #b3bab4;
+               font-weight: 700; text-transform: uppercase; }
 </style>
 </head>
 <body>
@@ -291,6 +300,7 @@ export function buildDocumentHtml(input: PdfDocumentInput): string {
     <div class="closing">${closing}</div>
     ${notesBlock}
   </div>
+  ${watermarkBlock}
 </body>
 </html>`;
 }
