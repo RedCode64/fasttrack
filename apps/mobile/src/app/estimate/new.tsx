@@ -13,7 +13,10 @@ import { PrimaryButton } from "@/components/ui/Buttons";
 import { Icon } from "@/components/ui/Icon";
 import { useDb, useQuery } from "@/db/DbProvider";
 import { listClients } from "@/db/repos/clientRepo";
-import { createDraft } from "@/db/repos/estimateRepo";
+import { createDraft, listEstimates } from "@/db/repos/estimateRepo";
+import { listInvoices } from "@/db/repos/invoiceRepo";
+import { canAddClient, canAddDocument } from "@/lib/gating";
+import { useEntitlement } from "@/subscriptions/SubscriptionProvider";
 import { colors, fonts, spacing } from "@/theme";
 
 type ClientMode = "new" | "existing";
@@ -24,6 +27,15 @@ export default function NewEstimate() {
   const router = useRouter();
   const orgId = org?.id ?? "";
   const clients = useQuery((c) => (orgId ? listClients(c, orgId) : Promise.resolve([])), [orgId]);
+  const { isPro } = useEntitlement();
+  const estimates = useQuery(
+    (c) => (orgId ? listEstimates(c, orgId) : Promise.resolve([])),
+    [orgId],
+  );
+  const invoices = useQuery(
+    (c) => (orgId ? listInvoices(c, orgId, "all") : Promise.resolve([])),
+    [orgId],
+  );
 
   const [mode, setMode] = useState<ClientMode>("new");
   const [newClientName, setNewClientName] = useState("");
@@ -37,6 +49,16 @@ export default function NewEstimate() {
     (mode === "new" ? newClientName.trim().length > 0 : clientId !== null);
 
   const create = async () => {
+    const clientCount = clients.data?.length ?? 0;
+    const docCount = (estimates.data?.length ?? 0) + (invoices.data?.length ?? 0);
+    if (mode === "new" && !canAddClient(clientCount, isPro)) {
+      router.push("/paywall");
+      return;
+    }
+    if (!canAddDocument(docCount, isPro)) {
+      router.push("/paywall");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {

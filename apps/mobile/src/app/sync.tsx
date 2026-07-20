@@ -13,6 +13,8 @@ import {
 import { PrimaryButton } from "@/components/ui/Buttons";
 import { Icon } from "@/components/ui/Icon";
 import { useDb } from "@/db/DbProvider";
+import { canSync } from "@/lib/gating";
+import { useEntitlement } from "@/subscriptions/SubscriptionProvider";
 import { pushAll, supabaseTarget, type PushSummaryEntry } from "@/sync/push";
 import { getAuthedSupabase, getSupabase } from "@/sync/supabaseClient";
 import { colors, fonts, spacing } from "@/theme";
@@ -23,6 +25,7 @@ type Phase = "idle" | "authing" | "pushing" | "done" | "error";
 export default function SyncScreen() {
   const { ctx, org } = useDb();
   const router = useRouter();
+  const { isPro } = useEntitlement();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,6 +34,10 @@ export default function SyncScreen() {
   const [summary, setSummary] = useState<readonly PushSummaryEntry[] | null>(null);
 
   const linkAndPush = async () => {
+    if (!canSync(isPro)) {
+      router.push("/paywall");
+      return;
+    }
     if (!org) {
       setMessage("Finish onboarding first.");
       return;

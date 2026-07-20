@@ -9,15 +9,18 @@ import { useDb, useQuery } from "@/db/DbProvider";
 import {
   estimateProfit,
   getEstimate,
+  listEstimates,
   markAccepted,
   markDeclined,
   sendEstimate,
 } from "@/db/repos/estimateRepo";
-import { convertFromEstimate, invoiceForEstimate } from "@/db/repos/invoiceRepo";
+import { convertFromEstimate, invoiceForEstimate, listInvoices } from "@/db/repos/invoiceRepo";
 import { estimatePdfInput } from "@/lib/docPdf";
 import { money, pctFromBps } from "@/lib/format";
+import { canAddDocument } from "@/lib/gating";
 import { buildDocumentHtml } from "@/lib/pdf";
 import { sharePdf } from "@/lib/printPdf";
+import { useEntitlement } from "@/subscriptions/SubscriptionProvider";
 import { colors, fonts, spacing } from "@/theme";
 
 /** The builder/detail: live documentProfit hero + line cards (design screen 3). */
@@ -30,6 +33,16 @@ export default function EstimateDetailScreen() {
 
   const detail = useQuery((c) => getEstimate(c, id), [id]);
   const convertedId = useQuery((c) => invoiceForEstimate(c, id), [id]);
+  const { isPro } = useEntitlement();
+  const orgId = org?.id ?? "";
+  const estimates = useQuery(
+    (c) => (orgId ? listEstimates(c, orgId) : Promise.resolve([])),
+    [orgId],
+  );
+  const invoices = useQuery(
+    (c) => (orgId ? listInvoices(c, orgId, "all") : Promise.resolve([])),
+    [orgId],
+  );
 
   if (!org || !detail.data) {
     return <View style={styles.screen}>{detail.error ? <Text style={styles.error}>{detail.error}</Text> : null}</View>;
@@ -52,20 +65,26 @@ export default function EstimateDetailScreen() {
 
   const preview = () =>
     run(async () => {
-      await sharePdf(buildDocumentHtml(estimatePdfInput(org, data)));
+      await sharePdf(buildDocumentHtml(estimatePdfInput(org, data, isPro)));
     });
   const send = () =>
     run(async () => {
-      await sharePdf(buildDocumentHtml(estimatePdfInput(org, data)));
+      await sharePdf(buildDocumentHtml(estimatePdfInput(org, data, isPro)));
       await mutate((c) => sendEstimate(c, id));
     });
   const accept = () => run(() => mutate((c) => markAccepted(c, id)));
   const decline = () => run(() => mutate((c) => markDeclined(c, id)));
-  const convert = () =>
-    run(async () => {
+  const convert = () => {
+    const docCount = (estimates.data?.length ?? 0) + (invoices.data?.length ?? 0);
+    if (!canAddDocument(docCount, isPro)) {
+      router.push("/paywall");
+      return;
+    }
+    void run(async () => {
       const invoice = await mutate((c) => convertFromEstimate(c, id));
       router.push({ pathname: "/invoice/[id]", params: { id: invoice.id } });
     });
+  };
   const viewInvoice = () => {
     if (convertedId.data) {
       router.push({ pathname: "/invoice/[id]", params: { id: convertedId.data } });

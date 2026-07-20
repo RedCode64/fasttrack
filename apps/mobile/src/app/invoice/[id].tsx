@@ -20,6 +20,7 @@ import { docNumber, money, shortDate } from "@/lib/format";
 import { dollarsToCents } from "@/lib/parse";
 import { buildDocumentHtml } from "@/lib/pdf";
 import { sharePdf } from "@/lib/printPdf";
+import { useEntitlement } from "@/subscriptions/SubscriptionProvider";
 import { colors, fonts, spacing, statusLabel } from "@/theme";
 
 interface BannerSpec {
@@ -80,6 +81,7 @@ export default function InvoiceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { org, mutate } = useDb();
   const router = useRouter();
+  const { isPro } = useEntitlement();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [paying, setPaying] = useState(false);
@@ -115,15 +117,15 @@ export default function InvoiceDetailScreen() {
 
   const viewPdf = () =>
     run(async () => {
-      await sharePdf(buildDocumentHtml(invoicePdfInput(org, data)));
+      await sharePdf(buildDocumentHtml(invoicePdfInput(org, data, isPro)));
     });
   const shareReceipt = () =>
     run(async () => {
-      await sharePdf(buildDocumentHtml(receiptPdfInput(org, data)));
+      await sharePdf(buildDocumentHtml(receiptPdfInput(org, data, isPro)));
     });
   const send = () =>
     run(async () => {
-      await sharePdf(buildDocumentHtml(invoicePdfInput(org, data)));
+      await sharePdf(buildDocumentHtml(invoicePdfInput(org, data, isPro)));
       await mutate((c) => sendInvoice(c, id));
     });
   const savePayment = () =>
