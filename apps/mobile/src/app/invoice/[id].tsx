@@ -22,7 +22,10 @@ import { invoicePdfInput, receiptPdfInput } from "@/lib/docPdf";
 import { docNumber, money, shortDate } from "@/lib/format";
 import { dollarsToCents } from "@/lib/parse";
 import { buildDocumentHtml } from "@/lib/pdf";
+import { buildPaymentRequest } from "@/lib/paymentRequest";
 import { sharePdf } from "@/lib/printPdf";
+import { loadSettings } from "@/lib/settings";
+import { shareText } from "@/lib/shareText";
 import { useEntitlement } from "@/subscriptions/SubscriptionProvider";
 import { colors, fonts, spacing, statusLabel } from "@/theme";
 
@@ -154,6 +157,20 @@ export default function InvoiceDetailScreen() {
       if (settlesInvoice) {
         setPaidInFull(true);
       }
+    });
+
+  const requestPayment = () =>
+    run(async () => {
+      const message = buildPaymentRequest({
+        businessName: org.name,
+        clientName: data.client.name,
+        invoiceNumber: data.invoice.number,
+        balanceCents: data.invoice.balance_cents,
+        dueAtIso: data.invoice.due_at,
+        isOverdue: status === "overdue",
+        payLink: loadSettings().payLink,
+      });
+      await shareText(message);
     });
 
   const openPaySheet = () => {
@@ -291,18 +308,31 @@ export default function InvoiceDetailScreen() {
           </View>
         </View>
       ) : (
-        <View style={styles.actions}>
-          <GhostButton label="View PDF" icon="pdf" onPress={viewPdf} disabled={busy} style={styles.actionGhost} />
-          {status === "draft" ? (
-            <PrimaryButton label="Send invoice" onPress={send} disabled={busy} style={styles.actionPrimary} />
-          ) : null}
+        <>
           {canTakePayment ? (
-            <PrimaryButton label="Record payment" icon="wallet" onPress={openPaySheet} disabled={busy} style={styles.actionPrimary} />
+            <View style={styles.requestRow}>
+              <GhostButton
+                label={status === "overdue" ? "Send reminder" : "Request payment"}
+                icon="share"
+                onPress={requestPayment}
+                disabled={busy}
+                style={styles.actionFull}
+              />
+            </View>
           ) : null}
-          {status === "paid" ? (
-            <PrimaryButton label="Share receipt" icon="share" onPress={shareReceipt} disabled={busy} style={styles.actionPrimary} />
-          ) : null}
-        </View>
+          <View style={styles.actions}>
+            <GhostButton label="View PDF" icon="pdf" onPress={viewPdf} disabled={busy} style={styles.actionGhost} />
+            {status === "draft" ? (
+              <PrimaryButton label="Send invoice" onPress={send} disabled={busy} style={styles.actionPrimary} />
+            ) : null}
+            {canTakePayment ? (
+              <PrimaryButton label="Record payment" icon="wallet" onPress={openPaySheet} disabled={busy} style={styles.actionPrimary} />
+            ) : null}
+            {status === "paid" ? (
+              <PrimaryButton label="Share receipt" icon="share" onPress={shareReceipt} disabled={busy} style={styles.actionPrimary} />
+            ) : null}
+          </View>
+        </>
       )}
     </ScrollView>
       <SuccessCheck
@@ -476,6 +506,13 @@ const styles = StyleSheet.create({
     gap: 10,
     marginHorizontal: spacing.screenX,
     marginTop: 18,
+  },
+  requestRow: {
+    marginHorizontal: spacing.screenX,
+    marginTop: 18,
+  },
+  actionFull: {
+    width: "100%",
   },
   actionGhost: {
     flex: 1,

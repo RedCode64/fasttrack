@@ -112,8 +112,11 @@ describe("healthForOrg (mirrors web rollups computeHealth)", () => {
     const { t, orgId } = await world();
     const { health, inputs } = await healthForOrg(t.ctx, orgId);
 
-    // Margin evidence: both accepted estimates → (50000+40000)/(150000+120000).
-    expect(inputs.marginBps).toBe(3333);
+    // Realized profit from both accepted estimates is 90000 on 270000 revenue
+    // (33.33% gross), but in-window overhead (41200 + 18800 + 80000 = 140000)
+    // nets it to -50000 → -1852 bps. The gauge sees the whole picture, not just
+    // line markups.
+    expect(inputs.marginBps).toBe(-1852);
     expect(inputs.targetMarginBps).toBe(3000);
     // Invoice A is open with balance 150000, one day past due at NOW.
     expect(inputs.outstandingCents).toBe(150000);

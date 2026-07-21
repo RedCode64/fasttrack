@@ -120,6 +120,50 @@ export async function monthKpis(ctx: DbCtx, orgId: string): Promise<MonthKpis> {
   };
 }
 
+import type { LedgerExpense, LedgerPayment } from "../../lib/csvExport";
+
+/** Cash-ledger rows for the accountant CSV export: money in, money out. */
+export async function ledgerForExport(
+  ctx: DbCtx,
+  orgId: string,
+): Promise<{ payments: LedgerPayment[]; expenses: LedgerExpense[] }> {
+  const paymentRows = await ctx.driver.exec(
+    `SELECT p.paid_at AS paid_at, p.amount_cents AS amount_cents, p.method AS method,
+            i.number AS invoice_number, c.name AS client_name
+     FROM payments p
+     JOIN invoices i ON i.id = p.invoice_id
+     JOIN jobs j ON j.id = i.job_id
+     JOIN clients c ON c.id = j.client_id
+     WHERE p.org_id = ? AND p.deleted_at IS NULL
+     ORDER BY p.paid_at ASC`,
+    [orgId],
+  );
+  const expenseRows = await ctx.driver.exec(
+    `SELECT e.spent_at AS spent_at, e.amount_cents AS amount_cents,
+            COALESCE(e.vendor, cat.name) AS party, cat.name AS category
+     FROM expenses e
+     JOIN expense_categories cat ON cat.id = e.category_id
+     WHERE e.org_id = ? AND e.deleted_at IS NULL
+     ORDER BY e.spent_at ASC`,
+    [orgId],
+  );
+  return {
+    payments: paymentRows.map((row) => ({
+      paidAtIso: String(row.paid_at),
+      clientName: String(row.client_name),
+      invoiceNumber: Number(row.invoice_number),
+      amountCents: Number(row.amount_cents),
+      method: String(row.method),
+    })),
+    expenses: expenseRows.map((row) => ({
+      spentAtIso: String(row.spent_at),
+      party: String(row.party),
+      category: String(row.category),
+      amountCents: Number(row.amount_cents),
+    })),
+  };
+}
+
 export type ActivityKind =
   | "payment_received"
   | "invoice_sent"

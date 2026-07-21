@@ -36,13 +36,22 @@ export default function Home() {
           </Text>
           <Text style={styles.title}>{greeting(new Date().getHours())}</Text>
         </View>
-        <Pressable
-          style={styles.cloudButton}
-          onPress={() => router.push("/sync")}
-          accessibilityLabel="Cloud sync"
-        >
-          <Icon name="cloud" size={19} color={colors.slate} />
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable
+            style={styles.cloudButton}
+            onPress={() => router.push("/settings")}
+            accessibilityLabel="Business settings"
+          >
+            <Icon name="wallet" size={18} color={colors.slate} />
+          </Pressable>
+          <Pressable
+            style={styles.cloudButton}
+            onPress={() => router.push("/sync")}
+            accessibilityLabel="Cloud sync"
+          >
+            <Icon name="cloud" size={19} color={colors.slate} />
+          </Pressable>
+        </View>
       </View>
 
       {health.data ? <HealthCard health={health.data.health} /> : null}
@@ -165,6 +174,10 @@ const styles = StyleSheet.create({
   },
   headerText: {
     flexShrink: 1,
+  },
+  headerActions: {
+    flexDirection: "row",
+    gap: 8,
   },
   cloudButton: {
     width: 38,
