@@ -77,6 +77,7 @@ export function computeHealth(
     estimateLines: readonly EstimateLine[];
     invoices: readonly Invoice[];
     payments: readonly Payment[];
+    expenses: readonly Expense[];
   },
   targetMarginBps: BasisPoints,
   now: Date,
@@ -93,10 +94,22 @@ export function computeHealth(
     profitSum += profit.profitCents;
     revenueSum += profit.revenueCents;
   }
+
+  // Overhead the line-item margins never see — fuel, tools, permits, office. A
+  // gauge that ignores it can read "good" while the business bleeds cash, so we
+  // net in-window expenses against realized profit to get a true margin.
+  let expenseSum = 0;
+  for (const expense of data.expenses) {
+    if (withinDays(expense.spent_at, now, HEALTH_WINDOW_DAYS)) {
+      expenseSum += expense.amount_cents;
+    }
+  }
+  const netProfit = profitSum - expenseSum;
+
   const marginBps =
     revenueSum === 0
-      ? targetMarginBps // no margin evidence → neutral, not alarming
-      : basisPoints(roundHalfUp((profitSum * 10_000) / revenueSum));
+      ? targetMarginBps // no revenue evidence → neutral, not alarming
+      : basisPoints(roundHalfUp((netProfit * 10_000) / revenueSum));
 
   let outstanding = 0;
   let overdue = 0;

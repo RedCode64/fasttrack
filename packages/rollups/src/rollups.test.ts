@@ -76,7 +76,7 @@ const CATS = [
 describe("computeHealth", () => {
   it("reads neutral margin when there is no accepted-estimate evidence", () => {
     const { inputs } = computeHealth(
-      { estimates: [], estimateLines: [], invoices: [], payments: [] },
+      { estimates: [], estimateLines: [], invoices: [], payments: [], expenses: [] },
       basisPoints(3000),
       NOW,
     );
@@ -92,11 +92,61 @@ describe("computeHealth", () => {
       line({ estimate_id: "e-old", quantity: 1, unit_cost_cents: 9999, unit_price_cents: 10000 }),
     ];
     const { inputs } = computeHealth(
-      { estimates: [inWindow, stale], estimateLines: lines, invoices: [], payments: [] },
+      { estimates: [inWindow, stale], estimateLines: lines, invoices: [], payments: [], expenses: [] },
       basisPoints(3000),
       NOW,
     );
     expect(inputs.marginBps).toBe(5000); // only the in-window 50% line counts
+  });
+
+  it("nets in-window expenses against realized profit for the margin component", () => {
+    // One accepted estimate: revenue 10000, cost 5000 → 5000 profit (50% gross).
+    const est = estimate({ id: "e-1" });
+    const lines = [
+      line({ estimate_id: "e-1", quantity: 1, unit_cost_cents: 5000, unit_price_cents: 10000 }),
+    ];
+    // 3000 of overhead expenses in-window → net profit 2000 → 20% net margin.
+    const expenses = [
+      expense({ amount_cents: 2000, spent_at: "2026-07-10" }),
+      expense({ amount_cents: 1000, spent_at: "2026-07-05" }),
+    ];
+    const { inputs } = computeHealth(
+      { estimates: [est], estimateLines: lines, invoices: [], payments: [], expenses },
+      basisPoints(3000),
+      NOW,
+    );
+    expect(inputs.marginBps).toBe(2000);
+  });
+
+  it("drives the margin negative when expenses swamp realized profit", () => {
+    const est = estimate({ id: "e-1" });
+    const lines = [
+      line({ estimate_id: "e-1", quantity: 1, unit_cost_cents: 5000, unit_price_cents: 10000 }),
+    ];
+    const expenses = [expense({ amount_cents: 900000, spent_at: "2026-07-10" })];
+    const { inputs, health } = computeHealth(
+      { estimates: [est], estimateLines: lines, invoices: [], payments: [], expenses },
+      basisPoints(3000),
+      NOW,
+    );
+    expect(inputs.marginBps).toBeLessThan(0);
+    // A business bleeding cash on overhead must not read "good".
+    expect(health.marginComponent).toBe(0);
+    expect(health.band).not.toBe("good");
+  });
+
+  it("ignores expenses outside the 90-day window", () => {
+    const est = estimate({ id: "e-1" });
+    const lines = [
+      line({ estimate_id: "e-1", quantity: 1, unit_cost_cents: 5000, unit_price_cents: 10000 }),
+    ];
+    const expenses = [expense({ amount_cents: 900000, spent_at: "2025-01-01" })];
+    const { inputs } = computeHealth(
+      { estimates: [est], estimateLines: lines, invoices: [], payments: [], expenses },
+      basisPoints(3000),
+      NOW,
+    );
+    expect(inputs.marginBps).toBe(5000); // stale overhead does not touch this window
   });
 
   it("splits outstanding into overdue by due date and sums collections", () => {
@@ -106,7 +156,7 @@ describe("computeHealth", () => {
       invoice({ status: "paid", total_cents: 7000, balance_cents: 0 }),
     ];
     const { inputs } = computeHealth(
-      { estimates: [], estimateLines: [], invoices, payments: [payment({ amount_cents: 15000 })] },
+      { estimates: [], estimateLines: [], invoices, payments: [payment({ amount_cents: 15000 })], expenses: [] },
       basisPoints(3000),
       NOW,
     );
@@ -205,7 +255,7 @@ describe("jobProfitability", () => {
 describe("buildTips", () => {
   it("fires over-budget, overdue, and unbilled rules; all-clear otherwise", () => {
     const health = computeHealth(
-      { estimates: [], estimateLines: [], invoices: [], payments: [] },
+      { estimates: [], estimateLines: [], invoices: [], payments: [], expenses: [] },
       basisPoints(3000),
       NOW,
     );

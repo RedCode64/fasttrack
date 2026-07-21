@@ -37,11 +37,15 @@ export function pctFromBps(bps: number): string {
   return `${Math.round(bps / 100)}%`;
 }
 
-/** Signed one-decimal delta: 6.2 → "▲ 6.2%", -25 → "▼ 25%", null → "—". */
+/** Above this, a delta is driven by a near-zero baseline and the exact figure is noise. */
+const DELTA_CAP_PCT = 999;
+
+/** Signed one-decimal delta: 6.2 → "▲ 6.2%", -25 → "▼ 25%", null → "—". Caps runaway ratios. */
 export function deltaLabel(pct: number | null): string {
   if (pct === null) return "—";
   const arrow = pct >= 0 ? "▲" : "▼";
   const abs = Math.abs(pct);
+  if (abs > DELTA_CAP_PCT) return `${arrow} ${DELTA_CAP_PCT}%+`;
   const text = Number.isInteger(abs) ? String(abs) : abs.toFixed(1);
   return `${arrow} ${text}%`;
 }

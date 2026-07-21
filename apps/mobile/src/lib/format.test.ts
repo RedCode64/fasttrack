@@ -44,6 +44,13 @@ describe("pctFromBps / deltaLabel", () => {
     expect(deltaLabel(-25)).toBe("▼ 25%");
     expect(deltaLabel(null)).toBe("—");
   });
+
+  it("caps runaway deltas so a near-zero baseline can't print nonsense", () => {
+    // Prior period ≈ $0 makes ratios explode; a five-figure percent helps no one.
+    expect(deltaLabel(174991.3)).toBe("▲ 999%+");
+    expect(deltaLabel(-4200)).toBe("▼ 999%+");
+    expect(deltaLabel(999)).toBe("▲ 999%");
+  });
 });
 
 describe("dates", () => {

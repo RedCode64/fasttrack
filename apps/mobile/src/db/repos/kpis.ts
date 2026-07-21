@@ -5,6 +5,7 @@ import type { DbCtx } from "../driver";
 import {
   rowToEstimate,
   rowToEstimateLine,
+  rowToExpense,
   rowToInvoice,
   rowToOrganization,
   rowToPayment,
@@ -19,11 +20,12 @@ export async function healthForOrg(ctx: DbCtx, orgId: string): Promise<HealthRes
   if (!orgRow) throw new Error("Organization not found");
   const org = rowToOrganization(orgRow);
 
-  const [estimates, estimateLines, invoices, payments] = await Promise.all([
+  const [estimates, estimateLines, invoices, payments, expenses] = await Promise.all([
     ctx.driver.exec("SELECT * FROM estimates WHERE org_id = ? AND deleted_at IS NULL", [orgId]),
     ctx.driver.exec("SELECT * FROM estimate_lines WHERE org_id = ? AND deleted_at IS NULL", [orgId]),
     ctx.driver.exec("SELECT * FROM invoices WHERE org_id = ? AND deleted_at IS NULL", [orgId]),
     ctx.driver.exec("SELECT * FROM payments WHERE org_id = ? AND deleted_at IS NULL", [orgId]),
+    ctx.driver.exec("SELECT * FROM expenses WHERE org_id = ? AND deleted_at IS NULL", [orgId]),
   ]);
 
   return computeHealth(
@@ -32,6 +34,7 @@ export async function healthForOrg(ctx: DbCtx, orgId: string): Promise<HealthRes
       estimateLines: estimateLines.map(rowToEstimateLine),
       invoices: invoices.map(rowToInvoice),
       payments: payments.map(rowToPayment),
+      expenses: expenses.map(rowToExpense),
     },
     basisPoints(org.target_margin_bps),
     new Date(ctx.now()),
