@@ -14,6 +14,7 @@ import {
 } from "react-native";
 
 import { GhostButton, PrimaryButton } from "@/components/ui/Buttons";
+import { HomeButton } from "@/components/ui/HomeButton";
 import { Icon } from "@/components/ui/Icon";
 import { useDb, useQuery } from "@/db/DbProvider";
 import {
@@ -162,6 +163,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
         <Pressable style={styles.back} onPress={() => router.back()}>
           <Icon name="back" size={18} color={colors.slate} />
         </Pressable>
+        <HomeButton />
         <View>
           <Text style={styles.kicker}>{isEdit ? "EDIT EXPENSE" : "NEW EXPENSE"}</Text>
           <Text style={styles.title}>{isEdit ? "Fix the details" : "Log the spend"}</Text>
@@ -277,7 +279,7 @@ export function ExpenseForm({ expenseId }: ExpenseFormProps) {
             value={billable}
             onValueChange={setBillable}
             trackColor={{ true: colors.green, false: colors.borderButton }}
-            thumbColor={colors.surface}
+            thumbColor={colors.white}
           />
         </View>
       ) : null}
@@ -352,7 +354,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1.5,
     borderStyle: "dashed",
-    borderColor: "#cdd4cb",
+    borderColor: colors.borderButton,
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
@@ -420,7 +422,7 @@ const styles = StyleSheet.create({
     color: colors.slate,
   },
   chipTextActive: {
-    color: colors.surface,
+    color: colors.white,
   },
   billableRow: {
     flexDirection: "row",

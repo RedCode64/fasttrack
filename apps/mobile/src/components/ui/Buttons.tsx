@@ -25,7 +25,7 @@ export function PrimaryButton({ label, onPress, icon, disabled, style }: ButtonP
         style,
       ]}
     >
-      {icon ? <Icon name={icon} size={18} color={colors.surface} strokeWidth={2.2} /> : null}
+      {icon ? <Icon name={icon} size={18} color={colors.white} strokeWidth={2.2} /> : null}
       <Text style={styles.primaryText}>{label}</Text>
     </Pressable>
   );
@@ -60,10 +60,10 @@ const styles = StyleSheet.create({
     borderRadius: spacing.buttonRadius,
   },
   primary: {
-    backgroundColor: colors.green,
+    backgroundColor: colors.accent,
   },
   primaryText: {
-    color: colors.surface,
+    color: colors.white,
     fontSize: 13.5,
     fontFamily: fonts.sans700,
   },

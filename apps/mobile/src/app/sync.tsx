@@ -11,6 +11,7 @@ import {
 } from "react-native";
 
 import { PrimaryButton } from "@/components/ui/Buttons";
+import { HomeButton } from "@/components/ui/HomeButton";
 import { Icon } from "@/components/ui/Icon";
 import { useDb } from "@/db/DbProvider";
 import { canSync } from "@/lib/gating";
@@ -92,6 +93,7 @@ export default function SyncScreen() {
         <Pressable style={styles.back} onPress={() => router.back()} accessibilityLabel="Back">
           <Icon name="back" size={18} color={colors.slate} />
         </Pressable>
+        <HomeButton />
         <View>
           <Text style={styles.kicker}>CLOUD SYNC</Text>
           <Text style={styles.title}>Push your books online</Text>

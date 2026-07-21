@@ -11,16 +11,35 @@ import {
   SpaceGrotesk_700Bold,
 } from "@expo-google-fonts/space-grotesk";
 import { useFonts } from "expo-font";
-import { Stack, useRouter, useSegments } from "expo-router";
+import {
+  DarkTheme,
+  Stack,
+  ThemeProvider,
+  useRouter,
+  useSegments,
+  type Theme,
+} from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, type ReactNode } from "react";
+import { View } from "react-native";
 
+import { ScreenGlow } from "@/components/ScreenGlow";
 import { DbProvider, useDb } from "@/db/DbProvider";
 import { SubscriptionProvider } from "@/subscriptions/SubscriptionProvider";
 import { colors } from "@/theme";
 
 SplashScreen.preventAutoHideAsync();
+
+/**
+ * Transparent navigator background so the root `ScreenGlow` shows through every
+ * screen. React Navigation otherwise paints an opaque (light) `background`
+ * behind the transparent screens, hiding the ambient glow.
+ */
+const navTheme: Theme = {
+  ...DarkTheme,
+  colors: { ...DarkTheme.colors, background: "transparent", card: "transparent" },
+};
 
 /** Redirects into onboarding until an org exists, and out of it once one does. */
 function OnboardingGate({ children }: { readonly children: ReactNode }) {
@@ -66,13 +85,18 @@ export default function RootLayout() {
     <DbProvider>
       <SubscriptionProvider>
         <OnboardingGate>
-          <StatusBar style="dark" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.screenBg },
-            }}
-          />
+          <View style={{ flex: 1, backgroundColor: colors.glowBase }}>
+            <ScreenGlow />
+            <StatusBar style="light" />
+            <ThemeProvider value={navTheme}>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: colors.screenBg },
+                }}
+              />
+            </ThemeProvider>
+          </View>
         </OnboardingGate>
       </SubscriptionProvider>
     </DbProvider>

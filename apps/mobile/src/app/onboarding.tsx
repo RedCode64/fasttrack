@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 
+import { SuccessCheck } from "@/components/SuccessCheck";
 import { GhostButton, PrimaryButton } from "@/components/ui/Buttons";
 import { useDb } from "@/db/DbProvider";
 import { createOrg } from "@/db/repos/orgRepo";
@@ -35,6 +36,7 @@ export default function Onboarding() {
   const [taxPct, setTaxPct] = useState("0");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [created, setCreated] = useState(false);
 
   const submit = async () => {
     const targetMarginBps = pctToBps(marginPct);
@@ -57,13 +59,20 @@ export default function Onboarding() {
       await mutate((ctx) =>
         createOrg(ctx, { name: name.trim(), trade, targetMarginBps, taxRateBps }),
       );
-      await refreshOrg();
-      router.replace("/(tabs)");
+      // Show the success checkmark first; refreshing the org here would trip
+      // OnboardingGate into redirecting before the animation plays. We refresh
+      // and navigate from onDone instead. `busy` stays true so the form is
+      // locked behind the overlay.
+      setCreated(true);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not create your business");
-    } finally {
       setBusy(false);
     }
+  };
+
+  const finishOnboarding = async () => {
+    await refreshOrg();
+    router.replace("/(tabs)");
   };
 
   const loadDemo = async () => {
@@ -81,6 +90,7 @@ export default function Onboarding() {
   };
 
   return (
+    <View style={styles.root}>
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.kicker}>WELCOME TO FASTTRACK</Text>
       <Text style={styles.title}>Set up your business</Text>
@@ -154,10 +164,20 @@ export default function Onboarding() {
         />
       ) : null}
     </ScrollView>
+      <SuccessCheck
+        visible={created}
+        message="Account created"
+        holdMs={3000}
+        onDone={finishOnboarding}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   screen: {
     flex: 1,
     backgroundColor: colors.screenBg,
@@ -228,7 +248,7 @@ const styles = StyleSheet.create({
     color: colors.slate,
   },
   chipTextActive: {
-    color: colors.surface,
+    color: colors.white,
   },
   rateRow: {
     flexDirection: "row",

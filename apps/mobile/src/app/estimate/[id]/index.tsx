@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 
 import { GhostButton, PrimaryButton } from "@/components/ui/Buttons";
+import { HomeButton } from "@/components/ui/HomeButton";
 import { Icon } from "@/components/ui/Icon";
 import { useDb, useQuery } from "@/db/DbProvider";
 import {
@@ -97,6 +98,7 @@ export default function EstimateDetailScreen() {
         <Pressable style={styles.back} onPress={() => router.back()}>
           <Icon name="back" size={18} color={colors.slate} />
         </Pressable>
+        <HomeButton />
         <View style={styles.headerText}>
           <Text style={styles.kicker}>ESTIMATE · {status.toUpperCase()}</Text>
           <Text style={styles.title} numberOfLines={1}>
@@ -265,7 +267,7 @@ const styles = StyleSheet.create({
   heroTotal: {
     fontSize: 32,
     fontFamily: fonts.mono700,
-    color: colors.surface,
+    color: colors.white,
     marginTop: 2,
   },
   heroRow: {
@@ -281,7 +283,7 @@ const styles = StyleSheet.create({
   heroSubValue: {
     fontSize: 15,
     fontFamily: fonts.mono600,
-    color: colors.surface,
+    color: colors.white,
     marginTop: 2,
   },
   heroMargin: {
@@ -312,7 +314,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
   },
   linePressed: {
-    backgroundColor: "#f2f7f2",
+    backgroundColor: colors.surface2,
   },
   lineTop: {
     flexDirection: "row",
@@ -359,7 +361,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     borderWidth: 1.5,
     borderStyle: "dashed",
-    borderColor: "#cdd4cb",
+    borderColor: colors.borderButton,
     borderRadius: 14,
     padding: 13,
     alignItems: "center",

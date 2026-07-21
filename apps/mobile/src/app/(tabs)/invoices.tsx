@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     color: colors.slate,
   },
   chipTextActive: {
-    color: colors.surface,
+    color: colors.white,
   },
   list: {
     paddingHorizontal: spacing.screenX,
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     gap: 13,
   },
   cardPressed: {
-    backgroundColor: "#f2f7f2",
+    backgroundColor: colors.surface2,
   },
   tile: {
     width: 40,

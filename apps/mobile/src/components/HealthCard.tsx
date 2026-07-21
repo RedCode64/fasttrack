@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   scoreText: {
     fontSize: 24,
     fontFamily: fonts.mono700,
-    color: colors.surface,
+    color: colors.white,
   },
   copy: {
     flex: 1,
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 19,
     fontFamily: fonts.sans700,
-    color: colors.surface,
+    color: colors.white,
   },
   summary: {
     fontSize: 12,
@@ -217,6 +217,6 @@ const styles = StyleSheet.create({
     textAlign: "right",
     fontSize: 12,
     fontFamily: fonts.mono700,
-    color: colors.surface,
+    color: colors.white,
   },
 });

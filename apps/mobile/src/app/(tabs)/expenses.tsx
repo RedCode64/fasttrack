@@ -36,7 +36,7 @@ export default function Expenses() {
           style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
           onPress={() => router.push("/expense/new")}
         >
-          <Icon name="plus" size={18} color={colors.surface} strokeWidth={2.2} />
+          <Icon name="plus" size={18} color={colors.white} strokeWidth={2.2} />
         </Pressable>
       </View>
 
@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: colors.green,
+    backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   cardPressed: {
-    backgroundColor: "#f2f7f2",
+    backgroundColor: colors.surface2,
   },
   thumb: {
     width: 40,

@@ -13,6 +13,7 @@ import {
 } from "react-native";
 
 import { GhostButton, PrimaryButton } from "@/components/ui/Buttons";
+import { HomeButton } from "@/components/ui/HomeButton";
 import { Icon } from "@/components/ui/Icon";
 import { useDb, useQuery } from "@/db/DbProvider";
 import {
@@ -157,6 +158,7 @@ export default function LineEditor() {
         <Pressable style={styles.back} onPress={() => router.back()}>
           <Icon name="back" size={18} color={colors.slate} />
         </Pressable>
+        <HomeButton />
         <View>
           <Text style={styles.kicker}>{isEdit ? "EDIT LINE ITEM" : "ADD LINE ITEM"}</Text>
           <Text style={styles.title}>{isEdit ? "Adjust cost & markup" : "Price the work"}</Text>
@@ -304,7 +306,7 @@ export default function LineEditor() {
               value={taxable}
               onValueChange={setTaxable}
               trackColor={{ true: colors.green, false: colors.borderButton }}
-              thumbColor={colors.surface}
+              thumbColor={colors.white}
             />
           </View>
 
@@ -394,7 +396,7 @@ const styles = StyleSheet.create({
     color: colors.slate,
   },
   segmentTextActive: {
-    color: colors.surface,
+    color: colors.white,
   },
   search: {
     marginTop: 14,
@@ -420,7 +422,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   rowPressed: {
-    backgroundColor: "#f2f7f2",
+    backgroundColor: colors.surface2,
   },
   bookText: {
     flex: 1,
@@ -487,7 +489,7 @@ const styles = StyleSheet.create({
     color: colors.slate,
   },
   chipTextActive: {
-    color: colors.surface,
+    color: colors.white,
   },
   row: {
     flexDirection: "row",

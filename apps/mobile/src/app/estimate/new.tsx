@@ -10,6 +10,7 @@ import {
 } from "react-native";
 
 import { PrimaryButton } from "@/components/ui/Buttons";
+import { HomeButton } from "@/components/ui/HomeButton";
 import { Icon } from "@/components/ui/Icon";
 import { useDb, useQuery } from "@/db/DbProvider";
 import { listClients } from "@/db/repos/clientRepo";
@@ -84,6 +85,7 @@ export default function NewEstimate() {
         <Pressable style={styles.back} onPress={() => router.back()}>
           <Icon name="back" size={18} color={colors.slate} />
         </Pressable>
+        <HomeButton />
         <View>
           <Text style={styles.kicker}>NEW ESTIMATE</Text>
           <Text style={styles.title}>Who's the work for?</Text>
@@ -229,7 +231,7 @@ const styles = StyleSheet.create({
     color: colors.slate,
   },
   segmentTextActive: {
-    color: colors.surface,
+    color: colors.white,
   },
   label: {
     fontSize: 12,
@@ -272,7 +274,7 @@ const styles = StyleSheet.create({
     color: colors.slate,
   },
   chipTextActive: {
-    color: colors.surface,
+    color: colors.white,
   },
   hint: {
     fontSize: 11.5,

@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.screenBg,
+    backgroundColor: colors.glowBase,
     padding: 24,
     gap: 8,
   },

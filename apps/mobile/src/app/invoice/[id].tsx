@@ -11,7 +11,9 @@ import {
   View,
 } from "react-native";
 
+import { SuccessCheck } from "@/components/SuccessCheck";
 import { GhostButton, PrimaryButton } from "@/components/ui/Buttons";
+import { HomeButton } from "@/components/ui/HomeButton";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { useDb, useQuery } from "@/db/DbProvider";
 import { getInvoice, recordPayment, sendInvoice, type DisplayStatus } from "@/db/repos/invoiceRepo";
@@ -88,6 +90,7 @@ export default function InvoiceDetailScreen() {
   const [amountText, setAmountText] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("check");
   const [reference, setReference] = useState("");
+  const [paidInFull, setPaidInFull] = useState(false);
 
   const detail = useQuery((c) => getInvoice(c, id), [id]);
 
@@ -134,6 +137,9 @@ export default function InvoiceDetailScreen() {
       if (amountCents === null || amountCents <= 0) {
         throw new Error("Enter a payment amount");
       }
+      // Mirror recordPayment's rule (balance <= 0 → "paid") against the
+      // pre-payment balance so we celebrate only a fully-settled invoice.
+      const settlesInvoice = amountCents >= data.invoice.balance_cents;
       await mutate((c) =>
         recordPayment(c, id, {
           amountCents,
@@ -144,6 +150,9 @@ export default function InvoiceDetailScreen() {
       setPaying(false);
       setAmountText("");
       setReference("");
+      if (settlesInvoice) {
+        setPaidInFull(true);
+      }
     });
 
   const openPaySheet = () => {
@@ -152,11 +161,13 @@ export default function InvoiceDetailScreen() {
   };
 
   return (
+    <View style={styles.root}>
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Pressable style={styles.back} onPress={() => router.back()}>
           <Icon name="back" size={18} color={colors.slate} />
         </Pressable>
+        <HomeButton />
         <View style={styles.headerText}>
           <Text style={styles.kicker}>INVOICE · {data.client.name.toUpperCase()}</Text>
           <Text style={styles.title}>{docNumber("INV", data.invoice.number)}</Text>
@@ -292,10 +303,19 @@ export default function InvoiceDetailScreen() {
         </View>
       )}
     </ScrollView>
+      <SuccessCheck
+        visible={paidInFull}
+        message="Paid in full"
+        onDone={() => setPaidInFull(false)}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   screen: {
     flex: 1,
     backgroundColor: colors.screenBg,
@@ -483,7 +503,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   input: {
-    backgroundColor: colors.screenBg,
+    backgroundColor: colors.field,
     borderWidth: 1,
     borderColor: colors.borderButton,
     borderRadius: 12,
@@ -502,7 +522,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 18,
-    backgroundColor: colors.screenBg,
+    backgroundColor: colors.field,
     borderWidth: 1,
     borderColor: colors.borderButton,
   },
@@ -516,7 +536,7 @@ const styles = StyleSheet.create({
     color: colors.slate,
   },
   chipTextActive: {
-    color: colors.surface,
+    color: colors.white,
   },
   payActions: {
     flexDirection: "row",

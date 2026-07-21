@@ -16,11 +16,11 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: colors.screenBg },
-        tabBarActiveTintColor: colors.green,
+        tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.tabInactive,
         tabBarStyle: {
-          backgroundColor: "rgba(255,255,255,0.92)",
-          borderTopColor: colors.borderCircle,
+          backgroundColor: "rgba(16,17,32,0.94)",
+          borderTopColor: colors.hairline,
         },
         tabBarLabelStyle: {
           fontSize: 10.5,

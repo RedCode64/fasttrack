@@ -10,8 +10,9 @@
     {
       "name": "mobile",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "mobile", "exec", "expo", "start", "--port", "8082"],
-      "port": 8082
+      "runtimeArgs": ["--filter", "mobile", "exec", "expo", "start", "--port", "8083"],
+      "autoPort": false,
+      "port": 8083
     }
   ]
 }
