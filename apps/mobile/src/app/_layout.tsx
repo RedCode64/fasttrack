@@ -24,7 +24,6 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, type ReactNode } from "react";
 import { View } from "react-native";
 
-import { ScreenGlow } from "@/components/ScreenGlow";
 import { DbProvider, useDb } from "@/db/DbProvider";
 import { SubscriptionProvider } from "@/subscriptions/SubscriptionProvider";
 import { colors } from "@/theme";
@@ -86,7 +85,6 @@ export default function RootLayout() {
       <SubscriptionProvider>
         <OnboardingGate>
           <View style={{ flex: 1, backgroundColor: colors.glowBase }}>
-            <ScreenGlow />
             <StatusBar style="light" />
             <ThemeProvider value={navTheme}>
               <Stack

@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 
+import { ScreenGlow } from "@/components/ScreenGlow";
 import { SuccessCheck } from "@/components/SuccessCheck";
 import { GhostButton, PrimaryButton } from "@/components/ui/Buttons";
 import { HomeButton } from "@/components/ui/HomeButton";
@@ -162,6 +163,7 @@ export default function InvoiceDetailScreen() {
 
   return (
     <View style={styles.root}>
+      <ScreenGlow />
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Pressable style={styles.back} onPress={() => router.back()}>

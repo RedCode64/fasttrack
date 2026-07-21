@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 
+import { ScreenGlow } from "@/components/ScreenGlow";
 import { GhostButton, PrimaryButton } from "@/components/ui/Buttons";
 import { HomeButton } from "@/components/ui/HomeButton";
 import { Icon } from "@/components/ui/Icon";
@@ -93,7 +94,9 @@ export default function EstimateDetailScreen() {
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <View style={styles.root}>
+      <ScreenGlow />
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Pressable style={styles.back} onPress={() => router.back()}>
           <Icon name="back" size={18} color={colors.slate} />
@@ -206,11 +209,15 @@ export default function EstimateDetailScreen() {
           <GhostButton label="Preview" icon="pdf" onPress={preview} disabled={busy} style={styles.actionGhost} />
         ) : null}
       </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   screen: {
     flex: 1,
     backgroundColor: colors.screenBg,

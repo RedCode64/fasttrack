@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { EmptyState } from "@/components/EmptyState";
+import { ScreenGlow } from "@/components/ScreenGlow";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { Pill } from "@/components/ui/Pill";
 import { useDb, useQuery } from "@/db/DbProvider";
@@ -42,7 +43,9 @@ export default function Invoices() {
   );
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <View style={styles.root}>
+      <ScreenGlow />
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Invoices</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chips}>
@@ -101,11 +104,15 @@ export default function Invoices() {
           );
         })}
       </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   screen: {
     flex: 1,
     backgroundColor: colors.screenBg,

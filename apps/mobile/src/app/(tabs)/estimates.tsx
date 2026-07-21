@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { EmptyState } from "@/components/EmptyState";
+import { ScreenGlow } from "@/components/ScreenGlow";
 import { Icon } from "@/components/ui/Icon";
 import { Pill } from "@/components/ui/Pill";
 import { useDb, useQuery } from "@/db/DbProvider";
@@ -17,7 +18,9 @@ export default function Estimates() {
   const rows = useQuery((c) => (orgId ? listEstimates(c, orgId) : Promise.resolve([])), [orgId]);
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <View style={styles.root}>
+      <ScreenGlow />
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Text style={styles.title}>Estimates</Text>
         <Pressable
@@ -61,11 +64,15 @@ export default function Estimates() {
           </Pressable>
         ))}
       </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   screen: {
     flex: 1,
     backgroundColor: colors.screenBg,

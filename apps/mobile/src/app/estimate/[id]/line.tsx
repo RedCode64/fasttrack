@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 
+import { ScreenGlow } from "@/components/ScreenGlow";
 import { GhostButton, PrimaryButton } from "@/components/ui/Buttons";
 import { HomeButton } from "@/components/ui/HomeButton";
 import { Icon } from "@/components/ui/Icon";
@@ -153,7 +154,9 @@ export default function LineEditor() {
   const labor = filtered.filter((i) => i.kind === "labor");
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <View style={styles.root}>
+      <ScreenGlow />
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Pressable style={styles.back} onPress={() => router.back()}>
           <Icon name="back" size={18} color={colors.slate} />
@@ -329,11 +332,15 @@ export default function LineEditor() {
           ) : null}
         </>
       )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   screen: {
     flex: 1,
     backgroundColor: colors.screenBg,

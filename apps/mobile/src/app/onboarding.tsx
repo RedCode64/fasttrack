@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 
+import { ScreenGlow } from "@/components/ScreenGlow";
 import { SuccessCheck } from "@/components/SuccessCheck";
 import { GhostButton, PrimaryButton } from "@/components/ui/Buttons";
 import { useDb } from "@/db/DbProvider";
@@ -91,6 +92,7 @@ export default function Onboarding() {
 
   return (
     <View style={styles.root}>
+      <ScreenGlow />
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.kicker}>WELCOME TO FASTTRACK</Text>
       <Text style={styles.title}>Set up your business</Text>

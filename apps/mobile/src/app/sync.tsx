@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 
+import { ScreenGlow } from "@/components/ScreenGlow";
 import { PrimaryButton } from "@/components/ui/Buttons";
 import { HomeButton } from "@/components/ui/HomeButton";
 import { Icon } from "@/components/ui/Icon";
@@ -88,7 +89,9 @@ export default function SyncScreen() {
   const isBusy = phase === "authing" || phase === "pushing";
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <View style={styles.root}>
+      <ScreenGlow />
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Pressable style={styles.back} onPress={() => router.back()} accessibilityLabel="Back">
           <Icon name="back" size={18} color={colors.slate} />
@@ -172,11 +175,15 @@ export default function SyncScreen() {
           ))}
         </View>
       ) : null}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   screen: {
     flex: 1,
     backgroundColor: colors.screenBg,

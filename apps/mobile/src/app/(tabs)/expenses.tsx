@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { EmptyState } from "@/components/EmptyState";
+import { ScreenGlow } from "@/components/ScreenGlow";
 import { Icon } from "@/components/ui/Icon";
 import { useDb, useQuery } from "@/db/DbProvider";
 import { listExpenses, monthSummary } from "@/db/repos/expenseRepo";
@@ -29,7 +30,9 @@ export default function Expenses() {
   const nowIso = ctx.now();
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <View style={styles.root}>
+      <ScreenGlow />
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Text style={styles.title}>Expenses</Text>
         <Pressable
@@ -96,11 +99,15 @@ export default function Expenses() {
           </Pressable>
         ))}
       </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   screen: {
     flex: 1,
     backgroundColor: colors.screenBg,

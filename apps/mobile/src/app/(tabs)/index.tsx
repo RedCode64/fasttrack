@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ActivityRow } from "@/components/ActivityRow";
 import { EmptyState } from "@/components/EmptyState";
+import { ScreenGlow } from "@/components/ScreenGlow";
 import { HealthCard } from "@/components/HealthCard";
 import { StatCard } from "@/components/StatCard";
 import { GhostButton, PrimaryButton } from "@/components/ui/Buttons";
@@ -25,7 +26,9 @@ export default function Home() {
   const nowIso = ctx.now();
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <View style={styles.root}>
+      <ScreenGlow />
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <View style={styles.headerText}>
           <Text style={styles.kicker}>
@@ -136,11 +139,15 @@ export default function Home() {
           />
         )}
       </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   screen: {
     flex: 1,
     backgroundColor: colors.screenBg,

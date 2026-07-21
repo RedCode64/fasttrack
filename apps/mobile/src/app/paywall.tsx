@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { ScreenGlow } from "@/components/ScreenGlow";
 import { PrimaryButton } from "@/components/ui/Buttons";
 import { Icon } from "@/components/ui/Icon";
 import { FREE_CLIENT_CAP, FREE_DOCUMENT_CAP } from "@/lib/gating";
@@ -52,7 +53,9 @@ export default function PaywallScreen() {
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <View style={styles.root}>
+      <ScreenGlow />
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Pressable style={styles.close} onPress={() => router.back()} accessibilityLabel="Close">
           <Icon name="back" size={18} color={colors.slate} />
@@ -125,11 +128,13 @@ export default function PaywallScreen() {
         Subscriptions renew automatically until cancelled. Manage or cancel anytime in your App Store
         account settings.
       </Text>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   screen: { flex: 1, backgroundColor: colors.screenBg },
   content: { padding: spacing.screenX, paddingTop: 52, paddingBottom: 40 },
   header: { flexDirection: "row", alignItems: "center", gap: 12, paddingBottom: 18 },
