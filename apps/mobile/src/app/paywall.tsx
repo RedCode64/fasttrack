@@ -10,7 +10,7 @@ import { useEntitlement } from "@/subscriptions/SubscriptionProvider";
 import type { ProPackage } from "@/subscriptions/purchasesClient";
 import { colors, fonts, spacing } from "@/theme";
 
-const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL ?? "https://fasttrack.app";
+const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL ?? "https://fasttrack-web-ten.vercel.app";
 const PRIVACY_URL = `${WEB_URL}/privacy`;
 // Apple's standard auto-renewing-subscription EULA (accepted default Terms of Use).
 const TERMS_URL = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/";

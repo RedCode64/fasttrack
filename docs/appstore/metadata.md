@@ -34,13 +34,13 @@ FASTTRACK PRO
 Pro is an auto-renewing subscription (monthly or annual). Payment is charged to your Apple ID; subscriptions renew automatically unless cancelled at least 24 hours before the period ends. Manage or cancel anytime in App Store account settings.
 
 Terms: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
-Privacy: https://fasttrack.app/privacy   ← replace with the deployed web URL
+Privacy: https://fasttrack-web-ten.vercel.app/privacy
 
 **Keywords (100 char max, comma-separated):**
 estimate,invoice,contractor,tradesman,receipt,expenses,quote,job,electrician,plumber,handyman,billing
 
-**Support URL:** https://fasttrack.app/support   ← replace with the deployed web URL
-**Marketing URL (optional):** https://fasttrack.app
+**Support URL:** https://fasttrack-web-ten.vercel.app/support
+**Marketing URL (optional):** https://fasttrack-web-ten.vercel.app
 **Copyright:** 2026 FastTrack
 
 **Age rating:** 4+ (no objectionable content). Answer "None" to all content-descriptor questions.
