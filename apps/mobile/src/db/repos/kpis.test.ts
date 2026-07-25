@@ -117,10 +117,11 @@ describe("healthForOrg (mirrors web rollups computeHealth)", () => {
     const { health, inputs } = await healthForOrg(t.ctx, orgId);
 
     // Realized profit from both accepted estimates is 90000 on 270000 revenue
-    // (33.33% gross), but in-window overhead (41200 + 18800 + 80000 = 140000)
-    // nets it to -50000 → -1852 bps. The gauge sees the whole picture, not just
-    // line markups.
-    expect(inputs.marginBps).toBe(-1852);
+    // (33.33% gross), but in-window *overhead* nets it down. The 41200 City
+    // Electric row is billable — a job cost the estimate line already priced in
+    // — so only 18800 + 80000 = 98800 counts, leaving -8800 → -326 bps. The
+    // gauge still sees past line markups; it just doesn't bill materials twice.
+    expect(inputs.marginBps).toBe(-326);
     expect(inputs.targetMarginBps).toBe(3000);
     // Invoice A is open with balance 150000, one day past due at NOW.
     expect(inputs.outstandingCents).toBe(150000);

@@ -98,8 +98,14 @@ export function computeHealth(
   // Overhead the line-item margins never see — fuel, tools, permits, office. A
   // gauge that ignores it can read "good" while the business bleeds cash, so we
   // net in-window expenses against realized profit to get a true margin.
+  //
+  // Billable receipts are skipped: those are job costs, and the estimate line's
+  // unit_cost_cents already subtracted them inside profitSum. Counting them here
+  // too would charge the business twice for a single purchase and sink the gauge
+  // for anyone who diligently logs their material receipts.
   let expenseSum = 0;
   for (const expense of data.expenses) {
+    if (expense.is_billable) continue;
     if (withinDays(expense.spent_at, now, HEALTH_WINDOW_DAYS)) {
       expenseSum += expense.amount_cents;
     }

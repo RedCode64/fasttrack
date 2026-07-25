@@ -118,6 +118,27 @@ describe("computeHealth", () => {
     expect(inputs.marginBps).toBe(2000);
   });
 
+  it("excludes billable job costs from the margin, since line costs already net them out", () => {
+    // Revenue 10000, cost 5000 → 5000 gross profit. The 3000 billable receipt IS
+    // that job's material spend, already subtracted inside the line cost —
+    // counting it again would charge the business twice for one purchase.
+    const est = estimate({ id: "e-1" });
+    const lines = [
+      line({ estimate_id: "e-1", quantity: 1, unit_cost_cents: 5000, unit_price_cents: 10000 }),
+    ];
+    const expenses = [
+      expense({ amount_cents: 3000, is_billable: true, job_id: "j-1" }),
+      expense({ amount_cents: 1000, is_billable: false }),
+    ];
+    const { inputs } = computeHealth(
+      { estimates: [est], estimateLines: lines, invoices: [], payments: [], expenses },
+      basisPoints(3000),
+      NOW,
+    );
+    // Only the 1000 of overhead lands: 5000 - 1000 = 4000 on 10000 revenue.
+    expect(inputs.marginBps).toBe(4000);
+  });
+
   it("drives the margin negative when expenses swamp realized profit", () => {
     const est = estimate({ id: "e-1" });
     const lines = [
