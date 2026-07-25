@@ -4,6 +4,15 @@ import { agingBuckets, monthlySeries } from "@/lib/rollups";
 
 const CHART = { width: 660, height: 190, top: 12, bottom: 26, left: 8 };
 
+/**
+ * Two-series categorical slots for the invoiced-vs-collected bars, validated
+ * against the card surface: adjacent CVD ΔE 19.6, normal-vision ΔE 20.9, both
+ * clear of the floors, and both inside the dark lightness band. The previous
+ * pairing was two greens, which collapsed on a dark ground.
+ */
+const SERIES_INVOICED = "#3987e5";
+const SERIES_COLLECTED = "#199e70";
+
 export default async function RevenuePage() {
   const { orgId } = await getOrgContext();
   const data = await loadDashboardData(orgId);
@@ -19,11 +28,18 @@ export default async function RevenuePage() {
   const groupWidth = (CHART.width - CHART.left * 2) / series.length;
   const barWidth = 26;
 
+  /**
+   * Receivables aging is a good→critical status scale, not an arbitrary
+   * categorical set, so it uses the reserved status steps rather than series
+   * hues. Warning and serious sit close by design (ΔE 13.6 unsimulated); the
+   * per-bucket text label beside each bar is what carries the distinction, so
+   * these colors are never read alone.
+   */
   const buckets = [
-    { label: "Current", cents: aging.notDueCents, color: "var(--green)" },
-    { label: "1–30 days", cents: aging.d1to30Cents, color: "var(--amber)" },
-    { label: "31–60 days", cents: aging.d31to60Cents, color: "#c96a2a" },
-    { label: "61+ days", cents: aging.d61plusCents, color: "var(--red)" },
+    { label: "Current", cents: aging.notDueCents, color: "#0ca30c" },
+    { label: "1–30 days", cents: aging.d1to30Cents, color: "#fab219" },
+    { label: "31–60 days", cents: aging.d31to60Cents, color: "#ec835a" },
+    { label: "61+ days", cents: aging.d61plusCents, color: "#d03b3b" },
   ];
 
   return (
@@ -43,11 +59,11 @@ export default async function RevenuePage() {
           <span style={{ fontWeight: 700, fontSize: 14.5 }}>Invoiced vs collected — 6 months</span>
           <span style={{ display: "flex", gap: 16, fontSize: 12, fontWeight: 600, color: "var(--muted)" }}>
             <span>
-              <span style={{ display: "inline-block", width: 9, height: 9, borderRadius: 2, background: "#7cc09a", marginRight: 6 }} />
+              <span style={{ display: "inline-block", width: 9, height: 9, borderRadius: 2, background: SERIES_INVOICED, marginRight: 6 }} />
               Invoiced
             </span>
             <span>
-              <span style={{ display: "inline-block", width: 9, height: 9, borderRadius: 2, background: "var(--green)", marginRight: 6 }} />
+              <span style={{ display: "inline-block", width: 9, height: 9, borderRadius: 2, background: SERIES_COLLECTED, marginRight: 6 }} />
               Collected
             </span>
           </span>
@@ -75,7 +91,7 @@ export default async function RevenuePage() {
                     width={barWidth}
                     height={Math.max(2, invoicedHeight)}
                     rx={5}
-                    fill="#7cc09a"
+                    fill={SERIES_INVOICED}
                   />
                   <rect
                     x={groupX + 3}
@@ -83,7 +99,7 @@ export default async function RevenuePage() {
                     width={barWidth}
                     height={Math.max(2, collectedHeight)}
                     rx={5}
-                    fill="var(--green)"
+                    fill={SERIES_COLLECTED}
                   />
                   <text
                     x={groupX}

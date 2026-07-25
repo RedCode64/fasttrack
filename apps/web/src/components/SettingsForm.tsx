@@ -100,7 +100,7 @@ export function SettingsForm({ org }: { org: Organization }) {
           style={{
             padding: "11px 18px",
             borderRadius: 11,
-            background: "var(--green)",
+            background: "var(--accent-deep)",
             color: "#fff",
             fontWeight: 700,
             fontSize: 14,

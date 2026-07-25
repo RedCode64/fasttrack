@@ -80,7 +80,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               width: 34,
               height: 34,
               borderRadius: 10,
-              background: "var(--green)",
+              background: "var(--accent)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -188,7 +188,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               padding: "9px 13px",
               maxWidth: 400,
               flex: 1,
-              color: "#99a29c",
+              color: "var(--muted-2)",
             }}
           >
             <Icon name="search" />
@@ -206,7 +206,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 padding: "8px 13px",
                 fontWeight: 600,
                 fontSize: 13,
-                color: "#3a453f",
+                color: "var(--ink)",
               }}
             >
               <Icon name="cal" /> {monthChip}

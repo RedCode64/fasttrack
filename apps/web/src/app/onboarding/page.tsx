@@ -153,7 +153,7 @@ export default function OnboardingPage() {
           </div>
           <button type="submit" disabled={isBusy}
             style={{
-              padding: "11px 13px", borderRadius: 11, background: "var(--green)",
+              padding: "11px 13px", borderRadius: 11, background: "var(--accent-deep)",
               color: "#fff", fontWeight: 700, fontSize: 14, opacity: isBusy ? 0.7 : 1,
             }}>
             {isBusy ? "Setting up…" : "Create my dashboard"}

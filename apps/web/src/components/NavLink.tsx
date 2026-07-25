@@ -25,8 +25,8 @@ export function NavLink({ href, label, icon, badge }: NavLinkProps) {
             fontWeight: 700,
             padding: "1px 7px",
             borderRadius: 20,
-            background: isActive ? "#cfe7d8" : "#eef1ec",
-            color: isActive ? "var(--green)" : "var(--muted-2)",
+            background: isActive ? "var(--accent-wash)" : "rgba(255,255,255,0.08)",
+            color: isActive ? "var(--accent-soft)" : "var(--muted-2)",
           }}
         >
           {badge}

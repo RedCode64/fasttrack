@@ -166,7 +166,7 @@ export function QuickCreate({ label, kinds, clients, categories }: QuickCreatePr
             position: "fixed",
             inset: 0,
             zIndex: 50,
-            background: "rgba(20, 28, 24, 0.42)",
+            background: "rgba(5, 6, 12, 0.66)",
             display: "flex",
             alignItems: "flex-start",
             justifyContent: "center",
@@ -197,8 +197,8 @@ export function QuickCreate({ label, kinds, clients, categories }: QuickCreatePr
                       fontSize: 12.5,
                       fontWeight: 700,
                       borderRadius: 8,
-                      background: kind === active ? "var(--green-bg)" : "var(--surface-2)",
-                      color: kind === active ? "var(--green-dark)" : "var(--muted)",
+                      background: kind === active ? "var(--accent-wash)" : "var(--surface-2)",
+                      color: kind === active ? "var(--accent-soft)" : "var(--muted)",
                     }}
                   >
                     {KIND_TITLE[kind].replace("New ", "")}
@@ -350,7 +350,7 @@ export function QuickCreate({ label, kinds, clients, categories }: QuickCreatePr
                       fontSize: 13,
                       fontWeight: 700,
                       color: "#fff",
-                      background: "var(--green)",
+                      background: "var(--accent-deep)",
                       borderRadius: 9,
                       opacity: isPending ? 0.65 : 1,
                     }}

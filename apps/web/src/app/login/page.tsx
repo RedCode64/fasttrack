@@ -64,7 +64,7 @@ export default function LoginPage() {
               width: 34,
               height: 34,
               borderRadius: 10,
-              background: "var(--green)",
+              background: "var(--accent)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -113,7 +113,7 @@ export default function LoginPage() {
             style={{
               padding: "11px 13px",
               borderRadius: 11,
-              background: "var(--green)",
+              background: "var(--accent-deep)",
               color: "#fff",
               fontWeight: 700,
               fontSize: 14,
@@ -135,7 +135,7 @@ export default function LoginPage() {
             setMode(mode === "signin" ? "signup" : "signin");
             setMessage(null);
           }}
-          style={{ marginTop: 16, fontSize: 13, fontWeight: 700, color: "var(--green)" }}
+          style={{ marginTop: 16, fontSize: 13, fontWeight: 700, color: "var(--accent-soft)" }}
         >
           {mode === "signin" ? "New here? Create an account" : "Have an account? Sign in"}
         </button>

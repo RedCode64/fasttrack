@@ -2,15 +2,24 @@ import { money, monthKey, monthLabel } from "@/lib/format";
 import { getOrgContext, loadDashboardData } from "@/lib/queries";
 import { spendByCategory } from "@/lib/rollups";
 
+/**
+ * Categorical donut segments, in fixed slot order — assigned by position, never
+ * cycled into a generated hue. These are the dark-mode steps of the standard
+ * categorical ramp, validated against the `--surface` card ground (#1b1d31):
+ * all eight clear the lightness band, chroma floor, 3:1 contrast, adjacent CVD
+ * separation (worst ΔE 8.4 protan) and the normal-vision floor (worst ΔE 19.3).
+ * The brand violet/green are deliberately NOT used here — green carries "paid /
+ * positive" semantics elsewhere and must not read as an expense category.
+ */
 const SEGMENT_COLORS = [
-  "#1c7c4e",
-  "#2ea36b",
-  "#7cc09a",
-  "#b9822a",
-  "#3a6ea5",
-  "#cf4b4b",
-  "#707b75",
-  "#a3aca6",
+  "#3987e5",
+  "#d95926",
+  "#199e70",
+  "#c98500",
+  "#d55181",
+  "#008300",
+  "#9085e9",
+  "#e66767",
 ];
 
 export default async function SpendPage() {

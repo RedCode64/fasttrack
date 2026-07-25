@@ -1,21 +1,47 @@
+/*
+ * FastTrack web design tokens — the "Brandux" dark theme, ported hex-for-hex
+ * from the mobile app's `apps/mobile/src/theme.ts` so both surfaces read as one
+ * product. Token roles worth knowing:
+ *   --surface       card / input background (NOT a foreground)
+ *   --field         recessed input background inside a card (darker than surface)
+ *   --accent        violet interactive accent: links, active nav, primary buttons
+ *   --green family  positive / paid / success semantics ONLY, never decoration
+ * Green used to be this app's brand accent; it is now reserved for success, and
+ * violet carries interaction — matching mobile.
+ */
+
 :root {
-  --bg: #eceeea;
-  --ink: #1c2622;
-  --muted: #707b75;
-  --muted-2: #8a938d;
-  --muted-3: #a3aca6;
-  --surface: #fff;
-  --surface-2: #f4f6f2;
-  --hover: #f3f6f2;
-  --border: #e7ebe6;
-  --green: #1c7c4e;
-  --green-dark: #0f5233;
-  --green-bg: #e9f4ec;
-  --red: #cf4b4b;
-  --red-bg: #fbecec;
-  --amber: #b9822a;
-  --amber-bg: #f6eeda;
-  --navy: #17211c;
+  --bg: #0b0c16;
+  --ink: #f4f5fb;
+  --muted: #a4a9bf;
+  --muted-2: #8b90a7;
+  --muted-3: #6c7189;
+  --surface: #1b1d31;
+  --surface-2: #242743;
+  --hover: rgba(255, 255, 255, 0.05);
+  --border: rgba(255, 255, 255, 0.07);
+  --border-button: rgba(255, 255, 255, 0.13);
+
+  /* Violet interactive accent. `--accent-soft` is the lifted step used for text
+     and icons on an --accent-wash fill, where --accent itself is too dim.
+     `--accent-deep` fills buttons that carry white label text: white on the base
+     --accent is only 4.0:1, which fails AA for button-sized text, while the deep
+     step clears it at 5.06:1. Both steps are mobile's own accent/accentDeep. */
+  --accent: #7b6cf0;
+  --accent-deep: #6a58e6;
+  --accent-soft: #a99cf5;
+  --accent-wash: rgba(123, 108, 240, 0.16);
+  /* Kept so existing `--navy` active-fill rules resolve to the accent. */
+  --navy: #7b6cf0;
+
+  /* Positive / success / paid — never decoration. */
+  --green: #4fd07a;
+  --green-bg: rgba(79, 208, 122, 0.15);
+
+  --red: #ff6b7d;
+  --red-bg: rgba(255, 107, 125, 0.15);
+  --amber: #f2b350;
+  --amber-bg: rgba(242, 179, 80, 0.15);
 }
 
 * {
@@ -27,20 +53,47 @@ body {
   margin: 0;
 }
 
+/* The ground lives on <html> so it also paints the overscroll canvas; the glow
+   is a fixed layer on body, which paints above that ground but below content. */
+html {
+  background: var(--bg);
+}
+
 body {
   font-family: var(--font-jakarta), system-ui, sans-serif;
   color: var(--ink);
-  background: var(--bg);
   -webkit-font-smoothing: antialiased;
 }
 
+/* Ambient "Brandux" atmosphere — a violet bloom top-right and a fainter blue one
+   bottom-left, matching mobile's ScreenGlow stops. Non-interactive. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      85% 85% at 84% 2%,
+      rgba(123, 108, 240, 0.26) 0%,
+      rgba(123, 108, 240, 0.07) 55%,
+      rgba(123, 108, 240, 0) 100%
+    ),
+    radial-gradient(
+      80% 80% at 4% 100%,
+      rgba(80, 140, 247, 0.14) 0%,
+      rgba(80, 140, 247, 0) 100%
+    );
+}
+
 a {
-  color: var(--green);
+  color: var(--accent-soft);
   text-decoration: none;
 }
 
 a:hover {
-  color: var(--green-dark);
+  color: var(--accent);
 }
 
 button {
@@ -67,7 +120,7 @@ table {
   height: 11px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #d5dad3;
+  background: rgba(255, 255, 255, 0.13);
   border-radius: 8px;
   border: 3px solid var(--bg);
 }
@@ -109,9 +162,11 @@ table {
 .expandable-card {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
+/* A drop shadow is invisible on a dark ground, so hover lifts via a brighter
+   border plus a faint accent halo instead. */
 .expandable-card:hover {
-  border-color: #d7ddd6;
-  box-shadow: 0 1px 3px rgba(28, 38, 34, 0.05);
+  border-color: var(--border-button);
+  box-shadow: 0 0 0 1px rgba(123, 108, 240, 0.12);
 }
 
 .chevron {
@@ -146,17 +201,17 @@ table {
   border-radius: 10px;
   font-size: 13.5px;
   font-weight: 600;
-  color: #5c665f;
+  color: var(--muted);
 }
 
 .nav-link:hover {
   background: var(--hover);
-  color: #5c665f;
+  color: var(--ink);
 }
 
 .nav-link.active {
-  background: var(--green-bg);
-  color: var(--green-dark);
+  background: var(--accent-wash);
+  color: var(--accent-soft);
 }
 
 .table th {
@@ -165,7 +220,9 @@ table {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--muted-3);
+  /* muted-2, not muted-3: at 11px bold these headers are not "large text", so
+     they need 4.5:1 — muted-3 only reaches 3.44:1 on a card. */
+  color: var(--muted-2);
   padding: 10px 14px;
   border-bottom: 1px solid var(--border);
 }
@@ -173,7 +230,7 @@ table {
 .table td {
   padding: 13px 14px;
   font-size: 13.5px;
-  border-bottom: 1px solid #f0f2ee;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .table tr:last-child td {
