@@ -23,7 +23,7 @@ const PRO_FEATURES: readonly string[] = [
 
 export default function PaywallScreen() {
   const router = useRouter();
-  const { packages, purchase, restore } = useEntitlement();
+  const { packages, error: loadError, purchase, restore } = useEntitlement();
   const [selected, setSelected] = useState<string | null>(packages[0]?.identifier ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +79,9 @@ export default function PaywallScreen() {
       </View>
 
       {packages.length === 0 ? (
-        <Text style={styles.blurb}>Plans are loading…</Text>
+        <Text style={styles.blurb}>
+          {loadError ? `Couldn't load plans: ${loadError}` : "Plans are loading…"}
+        </Text>
       ) : (
         <View style={styles.plans}>
           {packages.map((pkg) => {

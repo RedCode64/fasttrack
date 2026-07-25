@@ -22,6 +22,8 @@ interface SubscriptionValue {
   readonly isPro: boolean;
   readonly isReady: boolean;
   readonly packages: readonly ProPackage[];
+  /** Why `packages` is empty after `isReady` — e.g. RevenueCat rejected the API key, or the device is offline. */
+  readonly error: string | null;
   readonly purchase: (pkg: ProPackage) => Promise<void>;
   readonly restore: () => Promise<void>;
 }
@@ -39,6 +41,7 @@ export function SubscriptionProvider({ children }: { readonly children: ReactNod
   const [isPro, setIsPro] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [packages, setPackages] = useState<readonly ProPackage[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let unsubscribe = () => {};
@@ -48,8 +51,12 @@ export function SubscriptionProvider({ children }: { readonly children: ReactNod
       setIsPro(await currentIsPro());
       setPackages(await getProPackages());
     })()
-      .catch(() => {
-        /* stay free on any configure/fetch failure */
+      .catch((e: unknown) => {
+        // Stay in the free state, but keep the real reason — a paywall that
+        // silently loads forever is undiagnosable without a Mac to read device
+        // console logs from, and looks identical to a reviewer whether it's a
+        // transient network blip or a permanently broken API key.
+        setError(e instanceof Error ? e.message : "Could not load subscription plans");
       })
       .finally(() => setIsReady(true));
     return () => unsubscribe();
@@ -64,8 +71,8 @@ export function SubscriptionProvider({ children }: { readonly children: ReactNod
   }, []);
 
   const value = useMemo<SubscriptionValue>(
-    () => ({ isPro, isReady, packages, purchase, restore }),
-    [isPro, isReady, packages, purchase, restore],
+    () => ({ isPro, isReady, packages, error, purchase, restore }),
+    [isPro, isReady, packages, error, purchase, restore],
   );
 
   return <SubscriptionContext.Provider value={value}>{children}</SubscriptionContext.Provider>;
