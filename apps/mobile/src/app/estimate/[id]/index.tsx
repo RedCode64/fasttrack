@@ -1,10 +1,10 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 
 import { ScreenGlow } from "@/components/ScreenGlow";
 import { GhostButton, PrimaryButton } from "@/components/ui/Buttons";
+import { HeroGradient } from "@/components/ui/HeroGradient";
 import { HomeButton } from "@/components/ui/HomeButton";
 import { Icon } from "@/components/ui/Icon";
 import { useDb, useQuery } from "@/db/DbProvider";
@@ -20,7 +20,7 @@ import { convertFromEstimate, invoiceForEstimate, listInvoices } from "@/db/repo
 import { estimatePdfInput } from "@/lib/docPdf";
 import { money, pctFromBps } from "@/lib/format";
 import { canAddDocument } from "@/lib/gating";
-import { buildDocumentHtml } from "@/lib/pdf";
+import { buildDocumentHtml, documentFileName } from "@/lib/pdf";
 import { sharePdf } from "@/lib/printPdf";
 import { useEntitlement } from "@/subscriptions/SubscriptionProvider";
 import { colors, fonts, spacing } from "@/theme";
@@ -65,13 +65,11 @@ export default function EstimateDetailScreen() {
     }
   };
 
-  const preview = () =>
-    run(async () => {
-      await sharePdf(buildDocumentHtml(estimatePdfInput(org, data, isPro)));
-    });
+  const preview = () => router.push({ pathname: "/preview", params: { kind: "estimate", id } });
   const send = () =>
     run(async () => {
-      await sharePdf(buildDocumentHtml(estimatePdfInput(org, data, isPro)));
+      const input = estimatePdfInput(org, data, isPro);
+      await sharePdf(buildDocumentHtml(input), documentFileName(input));
       await mutate((c) => sendEstimate(c, id));
     });
   const accept = () => run(() => mutate((c) => markAccepted(c, id)));
@@ -111,15 +109,7 @@ export default function EstimateDetailScreen() {
       </View>
 
       <View style={styles.hero}>
-        <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
-          <Defs>
-            <RadialGradient id="estGrad" cx="15%" cy="10%" rx="140%" ry="130%">
-              <Stop offset="0" stopColor={colors.greenDeep} />
-              <Stop offset="1" stopColor={colors.greenDark} />
-            </RadialGradient>
-          </Defs>
-          <Rect width="100%" height="100%" rx={spacing.heroRadius} fill="url(#estGrad)" />
-        </Svg>
+        <HeroGradient gradientId="estimateHeroGrad" />
         <Text style={styles.heroLabel}>Estimate total</Text>
         <Text style={styles.heroTotal}>{money(data.estimate.total_cents)}</Text>
         <View style={styles.heroRow}>

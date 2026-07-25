@@ -1,8 +1,9 @@
 import type { HealthScore } from "@fasttrack/core";
 import { useState } from "react";
 import { LayoutAnimation, Platform, Pressable, StyleSheet, Text, UIManager, View } from "react-native";
-import Svg, { Circle, Defs, RadialGradient, Rect, Stop } from "react-native-svg";
+import Svg, { Circle } from "react-native-svg";
 
+import { HeroGradient } from "@/components/ui/HeroGradient";
 import { colors, fonts, spacing } from "@/theme";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -47,15 +48,7 @@ export function HealthCard({ health }: { readonly health: HealthScore }) {
       accessibilityState={{ expanded: open }}
       accessibilityLabel={`Business health ${health.score}, ${BAND_TITLE[health.band]}. Tap for breakdown.`}
     >
-      <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
-        <Defs>
-          <RadialGradient id="heroGrad" cx="15%" cy="10%" rx="140%" ry="130%">
-            <Stop offset="0" stopColor={colors.greenDeep} />
-            <Stop offset="1" stopColor={colors.greenDark} />
-          </RadialGradient>
-        </Defs>
-        <Rect width="100%" height="100%" rx={spacing.heroRadius} fill="url(#heroGrad)" />
-      </Svg>
+      <HeroGradient gradientId="healthHeroGrad" />
 
       <View style={styles.row}>
         <View style={styles.ringWrap}>

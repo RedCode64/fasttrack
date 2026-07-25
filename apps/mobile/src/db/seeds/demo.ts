@@ -8,6 +8,8 @@ import {
 import { getInvoice, convertFromEstimate, recordPayment, sendInvoice } from "../repos/invoiceRepo";
 import { createExpense, listCategories } from "../repos/expenseRepo";
 import { createOrg } from "../repos/orgRepo";
+import { createPriceBookItem } from "../repos/priceBookRepo";
+import { PRICE_BOOK_TEMPLATES } from "./priceBookTemplates";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
@@ -36,6 +38,20 @@ export async function seedDemo(base: DbCtx): Promise<void> {
     targetMarginBps: 3000,
     taxRateBps: 0,
   });
+
+  // Signing up for real leaves the price book empty — it fills from the lines
+  // you save. The demo is a showcase of a business already in motion, so it
+  // gets the trade's starter slice explicitly.
+  for (const template of PRICE_BOOK_TEMPLATES) {
+    if (template.trade !== "electrical") continue;
+    await createPriceBookItem(ctx, org.id, {
+      kind: template.kind,
+      name: template.name,
+      unit: template.unit,
+      unitCostCents: template.unitCostCents,
+      defaultMarkupPct: template.defaultMarkupPct,
+    });
+  }
 
   const categories = await listCategories(ctx, org.id);
   const categoryId = (name: string): string => {

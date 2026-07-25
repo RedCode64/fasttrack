@@ -41,6 +41,21 @@ export function loadSettings(): AppSettings {
   }
 }
 
+/** Drops device-local settings — part of a full app-data reset. */
+export function clearSettings(): void {
+  try {
+    if (Platform.OS === "web") {
+      globalThis.localStorage?.removeItem(WEB_KEY);
+      return;
+    }
+    const file = new File(Paths.document, SETTINGS_FILE);
+    if (file.exists) file.delete();
+  } catch {
+    // Nothing to recover: a settings file we cannot remove is still overwritten
+    // by the next saveSettings, and the reset itself must not fail on it.
+  }
+}
+
 export function saveSettings(settings: AppSettings): void {
   const payload = JSON.stringify(coerce(settings));
   if (Platform.OS === "web") {

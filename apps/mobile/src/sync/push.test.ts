@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createOrg } from "../db/repos/orgRepo";
+import { createPriceBookItem } from "../db/repos/priceBookRepo";
 import { createTestCtx } from "../db/repos/testUtils";
 import { collectPush, pushAll, PUSH_TABLES, type SyncTarget } from "./push";
 
@@ -11,6 +12,15 @@ async function seededCtx() {
     trade: "electrical",
     targetMarginBps: 3000,
     taxRateBps: 825,
+  });
+  // A new org's price book is empty; these tests need a row in it to prove the
+  // table syncs at all, so save one the way the app would.
+  await createPriceBookItem(ctx, org.id, {
+    kind: "material",
+    name: "200A panel",
+    unit: "ea",
+    unitCostCents: 42000,
+    defaultMarkupPct: 3500,
   });
   return { ctx, org };
 }
@@ -47,7 +57,7 @@ describe("collectPush", () => {
     expect(orgBatch?.rows).toHaveLength(1);
     expect(orgBatch?.rows[0]?.tax_config).toEqual({ name: "Sales tax", rate_bps: 825 });
     const pb = batches.find((b) => b.table === "price_book_items");
-    expect(pb?.rows.length).toBeGreaterThan(0); // electrical slice seeded by createOrg
+    expect(pb?.rows.length).toBeGreaterThan(0); // the item saved in seededCtx
   });
 
   it("includes soft-deleted rows so deletes propagate", async () => {
@@ -79,7 +89,7 @@ describe("pushAll", () => {
     expect(calls[2]?.table).toBe("memberships");
     expect(calls[2]?.onConflict).toBe("org_id,user_id");
     expect(calls[2]?.ignoreDuplicates).toBe(true);
-    // A fresh org has rows only in the two seeded tables; empty tables are skipped.
+    // This org has rows only in those two tables; empty tables are skipped.
     expect(calls.map((c) => c.table).slice(3)).toEqual(["price_book_items", "expense_categories"]);
     expect(summary.find((s) => s.table === "expense_categories")?.count).toBe(8);
   });

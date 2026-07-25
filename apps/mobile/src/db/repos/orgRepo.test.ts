@@ -20,7 +20,7 @@ describe("createOrg", () => {
     expect(org.tax_config).toEqual({ name: "Sales tax", rate_bps: 825 });
   });
 
-  it("seeds the trade's price book slice (electrical → 9 items)", async () => {
+  it("leaves the price book empty — it fills from the user's own saved lines", async () => {
     const { ctx } = await createTestCtx();
     const org = await createOrg(ctx, {
       name: "Reyes Electric",
@@ -29,11 +29,10 @@ describe("createOrg", () => {
       taxRateBps: 0,
     });
     const rows = await ctx.driver.exec(
-      "SELECT kind, name FROM price_book_items WHERE org_id = ? ORDER BY name",
+      "SELECT kind, name FROM price_book_items WHERE org_id = ?",
       [org.id],
     );
-    expect(rows).toHaveLength(9);
-    expect(rows.some((r) => r.name === "200A panel — Square D QO")).toBe(true);
+    expect(rows).toHaveLength(0);
   });
 
   it("seeds all 8 default expense categories in order", async () => {

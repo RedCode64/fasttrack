@@ -1,7 +1,7 @@
 import { cents } from "@fasttrack/core";
 import { describe, expect, it } from "vitest";
 
-import { buildDocumentHtml, type PdfDocumentInput } from "./pdf";
+import { buildDocumentHtml, documentFileName, type PdfDocumentInput } from "./pdf";
 
 const BASE: PdfDocumentInput = {
   docType: "estimate",
@@ -38,6 +38,39 @@ const BASE: PdfDocumentInput = {
     },
   ],
 };
+
+describe("documentFileName", () => {
+  it("names the file after the document type, number, and client", () => {
+    expect(documentFileName(BASE)).toBe("Estimate EST-1001 Novak.pdf");
+  });
+
+  it("labels invoices and receipts by their own type", () => {
+    expect(documentFileName({ ...BASE, docType: "invoice", docNumber: "INV-1042" })).toBe(
+      "Invoice INV-1042 Novak.pdf",
+    );
+    expect(documentFileName({ ...BASE, docType: "receipt", docNumber: "INV-1042" })).toBe(
+      "Receipt INV-1042 Novak.pdf",
+    );
+  });
+
+  it("folds path separators and reserved characters out of the client name", () => {
+    const name = documentFileName({ ...BASE, clientName: 'A/B\\C:D*E?F"G<H>I|J' });
+    expect(name).toBe("Estimate EST-1001 A B C D E F G H I J.pdf");
+    expect(name).not.toMatch(/[/\\?%*:|"<>]/);
+  });
+
+  it("collapses runs of whitespace rather than leaving gaps", () => {
+    expect(documentFileName({ ...BASE, clientName: "  Novak   &   Sons  " })).toBe(
+      "Estimate EST-1001 Novak & Sons.pdf",
+    );
+  });
+
+  it("still produces a usable name when every part sanitizes away", () => {
+    expect(documentFileName({ ...BASE, docType: "invoice", docNumber: "/", clientName: ":" })).toBe(
+      "Invoice.pdf",
+    );
+  });
+});
 
 describe("buildDocumentHtml (decision 8 — prices only, grouped by kind)", () => {
   it("groups lines under Materials before Labor and shows prices + totals", () => {

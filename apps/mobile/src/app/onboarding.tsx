@@ -105,8 +105,6 @@ export default function Onboarding() {
         style={styles.input}
         value={name}
         onChangeText={setName}
-        placeholder="Reyes Electric"
-        placeholderTextColor={colors.faint}
       />
 
       <Text style={styles.label}>Trade</Text>

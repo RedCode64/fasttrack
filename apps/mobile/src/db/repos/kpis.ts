@@ -177,6 +177,12 @@ export interface ActivityItem {
   readonly counterparty: string;
   /** Event instant (ISO) — paid_at / issued_at / due_at / created_at. */
   readonly at: string;
+  /**
+   * The document this row opens: the invoice for the three invoice-ish kinds,
+   * the expense for `expense_logged`. Distinct from `id` for payments, whose
+   * own id is not a navigable document.
+   */
+  readonly targetId: string;
 }
 
 /** The Home feed: the design's four event kinds, newest first. */
@@ -187,21 +193,21 @@ export async function activity(
 ): Promise<ActivityItem[]> {
   const rows = await ctx.driver.exec(
     `SELECT p.id AS id, 'payment_received' AS kind, p.amount_cents AS amount_cents,
-            c.name AS counterparty, p.paid_at AS at
+            c.name AS counterparty, p.paid_at AS at, i.id AS target_id
      FROM payments p
      JOIN invoices i ON i.id = p.invoice_id
      JOIN jobs j ON j.id = i.job_id
      JOIN clients c ON c.id = j.client_id
      WHERE p.org_id = ? AND p.deleted_at IS NULL
      UNION ALL
-     SELECT i.id, 'invoice_sent', i.total_cents, c.name, i.issued_at
+     SELECT i.id, 'invoice_sent', i.total_cents, c.name, i.issued_at, i.id
      FROM invoices i
      JOIN jobs j ON j.id = i.job_id
      JOIN clients c ON c.id = j.client_id
      WHERE i.org_id = ? AND i.deleted_at IS NULL
        AND i.status != 'draft' AND i.issued_at IS NOT NULL
      UNION ALL
-     SELECT i.id, 'invoice_overdue', i.balance_cents, c.name, i.due_at
+     SELECT i.id, 'invoice_overdue', i.balance_cents, c.name, i.due_at, i.id
      FROM invoices i
      JOIN jobs j ON j.id = i.job_id
      JOIN clients c ON c.id = j.client_id
@@ -210,7 +216,7 @@ export async function activity(
        AND i.due_at IS NOT NULL AND i.due_at < ? AND i.balance_cents > 0
      UNION ALL
      SELECT e.id, 'expense_logged', e.amount_cents,
-            COALESCE(e.vendor, cat.name), e.created_at
+            COALESCE(e.vendor, cat.name), e.created_at, e.id
      FROM expenses e
      JOIN expense_categories cat ON cat.id = e.category_id
      WHERE e.org_id = ? AND e.deleted_at IS NULL
@@ -225,5 +231,6 @@ export async function activity(
     amountCents: Number(row.amount_cents),
     counterparty: String(row.counterparty),
     at: String(row.at),
+    targetId: String(row.target_id),
   }));
 }

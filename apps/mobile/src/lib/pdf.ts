@@ -54,6 +54,29 @@ export interface PdfDocumentInput {
   readonly watermark?: boolean;
 }
 
+const DOC_TYPE_LABEL: Record<PdfDocType, string> = {
+  estimate: "Estimate",
+  invoice: "Invoice",
+  receipt: "Receipt",
+};
+
+/**
+ * What the shared file is called, e.g. `Invoice INV-1042 Novak.pdf`.
+ *
+ * The printer hands back a temp file on a generated path, so without this the
+ * client receives something like `2a7f9c1e-...pdf` in their mail app. Anything
+ * a filesystem or share target could choke on is folded to a space — client
+ * names are free text and routinely contain `/` or `:`.
+ */
+export function documentFileName(input: PdfDocumentInput): string {
+  const label = `${DOC_TYPE_LABEL[input.docType]} ${input.docNumber} ${input.clientName}`;
+  const cleaned = label
+    .replace(/[/\\?%*:|"<>]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return `${cleaned.length > 0 ? cleaned : "Document"}.pdf`;
+}
+
 const KIND_ORDER: readonly LineKind[] = ["material", "labor", "other"];
 const KIND_HEADER: Record<LineKind, string> = {
   material: "Materials",

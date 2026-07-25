@@ -12,3 +12,7 @@ coverage/
 apps/web/e2e/.auth/
 apps/web/playwright-report/
 apps/web/test-results/
+
+# Design exports and App Store screenshot captures (kept locally, uploaded by hand)
+*.zip
+docs/appstore/screenshots/

@@ -13,6 +13,10 @@ const NOW = "2026-07-16T12:00:00.000Z";
 interface World {
   t: TestCtx;
   orgId: string;
+  /** Overdue July invoice (Novak). */
+  invA: string;
+  /** Paid June invoice (Delgado) — the one the payment row hangs off. */
+  invB: string;
 }
 
 /**
@@ -104,7 +108,7 @@ async function world(): Promise<World> {
   });
 
   t.setNow(NOW);
-  return { t, orgId: org.id };
+  return { t, orgId: org.id, invA: invA.id, invB: invB.id };
 }
 
 describe("healthForOrg (mirrors web rollups computeHealth)", () => {
@@ -198,5 +202,27 @@ describe("activity", () => {
     const { t, orgId } = await world();
     const items = await activity(t.ctx, orgId, 2);
     expect(items).toHaveLength(2);
+  });
+
+  it("targets a payment row at its invoice, not at the payment itself", async () => {
+    const { t, orgId, invB } = await world();
+    const items = await activity(t.ctx, orgId, 10);
+
+    const payment = items.find((i) => i.kind === "payment_received");
+    // The row is keyed by the payment, but tapping it must open the invoice —
+    // a payment id addresses no screen in the app.
+    expect(payment?.targetId).toBe(invB);
+    expect(payment?.id).not.toBe(invB);
+  });
+
+  it("targets invoice and expense rows at their own document", async () => {
+    const { t, orgId, invA } = await world();
+    const items = await activity(t.ctx, orgId, 10);
+
+    const overdue = items.find((i) => i.kind === "invoice_overdue");
+    expect(overdue?.targetId).toBe(invA);
+
+    const expense = items.find((i) => i.kind === "expense_logged");
+    expect(expense?.targetId).toBe(expense?.id);
   });
 });

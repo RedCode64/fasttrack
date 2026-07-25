@@ -16,15 +16,16 @@
       "ios": {}
     },
     "production": {
+      "autoIncrement": true,
       "ios": {}
     }
   },
   "submit": {
     "production": {
       "ios": {
-        "appleId": "APPLE_ID_EMAIL_SET_BY_OWNER",
-        "ascAppId": "ASC_APP_ID_SET_BY_OWNER",
-        "appleTeamId": "APPLE_TEAM_ID_SET_BY_OWNER"
+        "appleId": "prime.delta@protonmail.com",
+        "ascAppId": "6794430045",
+        "appleTeamId": "93TSKJBLFD"
       }
     }
   }

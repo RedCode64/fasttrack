@@ -121,8 +121,6 @@ export default function NewEstimate() {
             style={styles.input}
             value={newClientName}
             onChangeText={setNewClientName}
-            placeholder="Novak"
-            placeholderTextColor={colors.faint}
           />
         </>
       ) : (
@@ -155,8 +153,6 @@ export default function NewEstimate() {
         style={styles.input}
         value={jobTitle}
         onChangeText={setJobTitle}
-        placeholder="Panel upgrade — 200A service"
-        placeholderTextColor={colors.faint}
       />
       <Text style={styles.hint}>This creates the job — every document hangs off it.</Text>
 

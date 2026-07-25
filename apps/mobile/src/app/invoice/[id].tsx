@@ -21,7 +21,7 @@ import { getInvoice, recordPayment, sendInvoice, type DisplayStatus } from "@/db
 import { invoicePdfInput, receiptPdfInput } from "@/lib/docPdf";
 import { docNumber, money, shortDate } from "@/lib/format";
 import { dollarsToCents } from "@/lib/parse";
-import { buildDocumentHtml } from "@/lib/pdf";
+import { buildDocumentHtml, documentFileName } from "@/lib/pdf";
 import { buildPaymentRequest } from "@/lib/paymentRequest";
 import { sharePdf } from "@/lib/printPdf";
 import { loadSettings } from "@/lib/settings";
@@ -122,17 +122,12 @@ export default function InvoiceDetailScreen() {
     }
   };
 
-  const viewPdf = () =>
-    run(async () => {
-      await sharePdf(buildDocumentHtml(invoicePdfInput(org, data, isPro)));
-    });
-  const shareReceipt = () =>
-    run(async () => {
-      await sharePdf(buildDocumentHtml(receiptPdfInput(org, data, isPro)));
-    });
+  const viewPdf = () => router.push({ pathname: "/preview", params: { kind: "invoice", id } });
+  const shareReceipt = () => router.push({ pathname: "/preview", params: { kind: "receipt", id } });
   const send = () =>
     run(async () => {
-      await sharePdf(buildDocumentHtml(invoicePdfInput(org, data, isPro)));
+      const input = invoicePdfInput(org, data, isPro);
+      await sharePdf(buildDocumentHtml(input), documentFileName(input));
       await mutate((c) => sendInvoice(c, id));
     });
   const savePayment = () =>

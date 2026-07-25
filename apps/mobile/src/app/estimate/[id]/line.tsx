@@ -24,7 +24,7 @@ import {
   removeLine,
   updateLine,
 } from "@/db/repos/estimateRepo";
-import { listPriceBookItems } from "@/db/repos/priceBookRepo";
+import { createPriceBookItem, listPriceBookItems } from "@/db/repos/priceBookRepo";
 import { money, pctFromBps } from "@/lib/format";
 import { dollarsToCents, parseQuantity, pctToBps } from "@/lib/parse";
 import { colors, fonts, spacing } from "@/theme";
@@ -51,9 +51,13 @@ export default function LineEditor() {
     [orgId],
   );
 
-  const [tab, setTab] = useState<"book" | "custom">(isEdit ? "custom" : "book");
+  // Typing is the default path: the price book starts empty and only fills
+  // with lines the user chose to keep, so opening on the picker would show a
+  // blank screen to anyone who has not saved anything yet.
+  const [tab, setTab] = useState<"book" | "custom">("custom");
   const [search, setSearch] = useState("");
   const [seeded, setSeeded] = useState(false);
+  const [saveToBook, setSaveToBook] = useState(true);
   const [kind, setKind] = useState<LineKind>("material");
   const [description, setDescription] = useState("");
   const [quantity, setQuantity] = useState("1");
@@ -124,11 +128,22 @@ export default function LineEditor() {
       isTaxable: taxable,
     };
     try {
-      if (isEdit && existing) {
-        await mutate((c) => updateLine(c, existing.id, input));
-      } else {
-        await mutate((c) => addCustomLine(c, id, input));
-      }
+      await mutate(async (c) => {
+        if (isEdit && existing) {
+          await updateLine(c, existing.id, input);
+        } else {
+          await addCustomLine(c, id, input);
+        }
+        if (saveToBook) {
+          await createPriceBookItem(c, orgId, {
+            kind: input.kind,
+            name: input.description,
+            unit: input.unit,
+            unitCostCents: input.unitCostCents,
+            defaultMarkupPct: input.markupPct,
+          });
+        }
+      });
       router.back();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not save the line");
@@ -232,6 +247,13 @@ export default function LineEditor() {
               </View>
             ) : null,
           )}
+          {filtered.length === 0 ? (
+            <Text style={styles.bookEmpty}>
+              {(items.data?.length ?? 0) === 0
+                ? "Your price book is empty. Add a line on the Custom tab with “Save to my price book” on, and it shows up here next time."
+                : "Nothing matches that search."}
+            </Text>
+          ) : null}
         </>
       ) : (
         <>
@@ -261,8 +283,6 @@ export default function LineEditor() {
             style={styles.input}
             value={description}
             onChangeText={setDescription}
-            placeholder="200A panel — Square D QO"
-            placeholderTextColor={colors.faint}
           />
 
           <View style={styles.row}>
@@ -288,7 +308,7 @@ export default function LineEditor() {
                 value={costText}
                 onChangeText={setCostText}
                 keyboardType="decimal-pad"
-                placeholder="420.00"
+                placeholder="0.00"
                 placeholderTextColor={colors.faint}
               />
             </View>
@@ -308,6 +328,19 @@ export default function LineEditor() {
             <Switch
               value={taxable}
               onValueChange={setTaxable}
+              trackColor={{ true: colors.green, false: colors.borderButton }}
+              thumbColor={colors.white}
+            />
+          </View>
+
+          <View style={styles.taxRow}>
+            <View style={styles.saveText}>
+              <Text style={styles.taxLabel}>Save to my price book</Text>
+              <Text style={styles.saveHint}>Reuse this item on future estimates.</Text>
+            </View>
+            <Switch
+              value={saveToBook}
+              onValueChange={setSaveToBook}
               trackColor={{ true: colors.green, false: colors.borderButton }}
               thumbColor={colors.white}
             />
@@ -521,6 +554,23 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     fontFamily: fonts.sans600,
     color: colors.ink,
+  },
+  saveText: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  saveHint: {
+    fontSize: 11.5,
+    fontFamily: fonts.sans500,
+    color: colors.muted,
+    marginTop: 2,
+  },
+  bookEmpty: {
+    marginTop: 18,
+    fontSize: 12.5,
+    lineHeight: 18,
+    fontFamily: fonts.sans500,
+    color: colors.muted,
   },
   preview: {
     marginTop: 14,

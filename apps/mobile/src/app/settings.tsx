@@ -8,14 +8,15 @@ import { HomeButton } from "@/components/ui/HomeButton";
 import { Icon } from "@/components/ui/Icon";
 import { useDb } from "@/db/DbProvider";
 import { ledgerForExport } from "@/db/repos/kpis";
+import { resetAllData } from "@/db/reset";
 import { buildLedgerCsv } from "@/lib/csvExport";
 import { shareCsv } from "@/lib/exportFile";
-import { loadSettings, saveSettings } from "@/lib/settings";
+import { clearSettings, loadSettings, saveSettings } from "@/lib/settings";
 import { colors, fonts, spacing } from "@/theme";
 
 /** Business hub: the "get paid" link and the accountant export. */
 export default function SettingsScreen() {
-  const { org, ctx } = useDb();
+  const { org, ctx, mutate, refreshOrg } = useDb();
   const router = useRouter();
 
   const [payLink, setPayLink] = useState(() => loadSettings().payLink ?? "");
@@ -23,6 +24,8 @@ export default function SettingsScreen() {
   const [exporting, setExporting] = useState(false);
   const [exportNote, setExportNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingReset, setConfirmingReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   if (!org) return null;
 
@@ -53,6 +56,21 @@ export default function SettingsScreen() {
       setError(e instanceof Error ? e.message : "Could not export the ledger");
     } finally {
       setExporting(false);
+    }
+  };
+
+  const resetEverything = async () => {
+    setResetting(true);
+    setError(null);
+    try {
+      await mutate((c) => resetAllData(c));
+      clearSettings();
+      await refreshOrg();
+      router.replace("/onboarding");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Could not reset your data");
+      setResetting(false);
+      setConfirmingReset(false);
     }
   };
 
@@ -108,8 +126,45 @@ export default function SettingsScreen() {
             style={styles.save}
           />
           {exportNote ? <Text style={styles.note}>{exportNote}</Text> : null}
-          {error ? <Text style={styles.error}>{error}</Text> : null}
         </View>
+
+        <Text style={styles.sectionLabel}>RESET</Text>
+        <View style={styles.card}>
+          <Text style={styles.cardHint}>
+            Deletes every client, job, estimate, invoice, payment, and expense stored
+            on this phone, and returns you to setup. This cannot be undone.
+          </Text>
+          {confirmingReset ? (
+            <>
+              <Text style={styles.danger}>
+                Permanently delete everything? Export your ledger first if you need a
+                record.
+              </Text>
+              <View style={styles.confirmRow}>
+                <GhostButton
+                  label="Cancel"
+                  onPress={() => setConfirmingReset(false)}
+                  disabled={resetting}
+                  style={styles.confirmButton}
+                />
+                <GhostButton
+                  label={resetting ? "Deleting…" : "Delete everything"}
+                  onPress={() => void resetEverything()}
+                  disabled={resetting}
+                  style={[styles.confirmButton, styles.destructive]}
+                />
+              </View>
+            </>
+          ) : (
+            <GhostButton
+              label="Reset all app data"
+              onPress={() => setConfirmingReset(true)}
+              style={styles.save}
+            />
+          )}
+        </View>
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
     </View>
   );
@@ -153,6 +208,24 @@ const styles = StyleSheet.create({
     color: colors.slate,
     lineHeight: 18,
     marginBottom: 12,
+  },
+  danger: {
+    fontSize: 12.5,
+    fontFamily: fonts.sans600,
+    color: colors.red,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  confirmRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  confirmButton: {
+    flex: 1,
+  },
+  destructive: {
+    borderColor: colors.red,
+    backgroundColor: colors.redWash,
   },
   input: {
     backgroundColor: colors.screenBg,

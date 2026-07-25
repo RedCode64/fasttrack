@@ -8,6 +8,7 @@ import {
 import { describe, expect, it } from "vitest";
 
 import { createClient } from "./clientRepo";
+import { createPriceBookItem } from "./priceBookRepo";
 import {
   addCustomLine,
   addLineFromPriceBook,
@@ -81,11 +82,16 @@ describe("lines and totals", () => {
       newClientName: "Novak",
       jobTitle: "Panel upgrade",
     });
-    const items = await t.ctx.driver.exec(
-      "SELECT id FROM price_book_items WHERE org_id = ? AND name = ?",
-      [orgId, "200A panel — Square D QO"],
-    );
-    const itemId = String(items[0]?.id);
+    // The price book starts empty for a new org, so save the item first —
+    // exactly the path a user takes before it becomes reusable.
+    const item = await createPriceBookItem(t.ctx, orgId, {
+      kind: "material",
+      name: "200A panel — Square D QO",
+      unit: "ea",
+      unitCostCents: 42000,
+      defaultMarkupPct: 3500,
+    });
+    const itemId = item.id;
 
     await addLineFromPriceBook(t.ctx, est.id, itemId, 1);
 

@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { ActivityItem } from "@/db/repos/kpis";
 import { money, relativeTime } from "@/lib/format";
@@ -27,8 +28,22 @@ export function ActivityRow({
   readonly nowIso: string;
   readonly isLast: boolean;
 }) {
+  const router = useRouter();
+  const open = () => {
+    if (item.kind === "expense_logged") {
+      router.push({ pathname: "/expense/[id]", params: { id: item.targetId } });
+    } else {
+      router.push({ pathname: "/invoice/[id]", params: { id: item.targetId } });
+    }
+  };
+
   return (
-    <View style={[styles.row, !isLast && styles.divider]}>
+    <Pressable
+      style={({ pressed }) => [styles.row, !isLast && styles.divider, pressed && styles.pressed]}
+      onPress={open}
+      accessibilityRole="button"
+      accessibilityLabel={`${KIND_LABEL[item.kind]}, ${money(item.amountCents)}, ${item.counterparty}. Opens the document.`}
+    >
       <View style={[styles.dot, { backgroundColor: KIND_DOT[item.kind] }]} />
       <View style={styles.body}>
         <Text style={styles.kind}>{KIND_LABEL[item.kind]}</Text>
@@ -37,7 +52,7 @@ export function ActivityRow({
         </Text>
       </View>
       <Text style={styles.time}>{relativeTime(item.at, nowIso)}</Text>
-    </View>
+    </Pressable>
   );
 }
 
@@ -51,6 +66,11 @@ const styles = StyleSheet.create({
   divider: {
     borderBottomWidth: 1,
     borderBottomColor: colors.hairline,
+  },
+  // Dimming rather than a fill: the row sits inside the activity card's own
+  // padding, so a background would read as an inset block against the divider.
+  pressed: {
+    opacity: 0.55,
   },
   dot: {
     width: 9,

@@ -3,7 +3,6 @@ import { organizationSchema, type Organization, type Trade } from "@fasttrack/sc
 import type { DbCtx } from "../driver";
 import { rowToOrganization } from "../mappers";
 import { DEFAULT_EXPENSE_CATEGORIES } from "../seeds/categories";
-import { PRICE_BOOK_TEMPLATES } from "../seeds/priceBookTemplates";
 
 export interface CreateOrgInput {
   readonly name: string;
@@ -14,9 +13,13 @@ export interface CreateOrgInput {
 }
 
 /**
- * Onboarding in one transaction: the org row, its trade's price-book slice,
- * and the 8 default expense categories — the local mirror of Plan 2's
- * `seed_price_book` + `seed_expense_categories`.
+ * Onboarding in one transaction: the org row and the 8 default expense
+ * categories.
+ *
+ * The price book deliberately starts empty. Pre-seeding a trade's template
+ * slice meant a new user's first "add line item" screen was a wall of someone
+ * else's parts and prices; instead the book fills from the lines they actually
+ * save (see `createPriceBookItem`).
  */
 export async function createOrg(ctx: DbCtx, input: CreateOrgInput): Promise<Organization> {
   const org = organizationSchema.parse({
@@ -47,27 +50,6 @@ export async function createOrg(ctx: DbCtx, input: CreateOrgInput): Promise<Orga
     );
 
     const now = ctx.now();
-    for (const template of PRICE_BOOK_TEMPLATES) {
-      if (template.trade !== input.trade) continue;
-      await ctx.driver.exec(
-        `INSERT INTO price_book_items
-           (id, org_id, kind, name, unit, unit_cost_cents, default_markup_pct,
-            created_at, updated_at, deleted_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
-        [
-          ctx.newId(),
-          org.id,
-          template.kind,
-          template.name,
-          template.unit,
-          template.unitCostCents,
-          template.defaultMarkupPct,
-          now,
-          now,
-        ],
-      );
-    }
-
     for (const [index, name] of DEFAULT_EXPENSE_CATEGORIES.entries()) {
       await ctx.driver.exec(
         `INSERT INTO expense_categories

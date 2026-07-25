@@ -1,7 +1,7 @@
 # App Store Connect — Listing Metadata (draft)
 
-**App name:** FastTrack — Estimates & Invoices
-_(If "FastTrack" alone is taken, this longer name is the store display name; the on-device name stays "FastTrack".)_
+**App name:** FastTrack Invoices
+_("FastTrack" alone was taken; this is the store display name registered in App Store Connect. The on-device name stays "FastTrack" — set via `expo.name` in `apps/mobile/app.json`.)_
 
 **Subtitle (30 char max):** Estimates, invoices, expenses
 
