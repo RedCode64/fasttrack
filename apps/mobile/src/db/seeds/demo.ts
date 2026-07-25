@@ -82,12 +82,26 @@ export async function seedDemo(base: DbCtx): Promise<void> {
     return found.id;
   };
 
+  interface LineSpec {
+    readonly kind: "labor" | "material";
+    readonly description: string;
+    readonly costCents: number;
+    readonly markupBps: number;
+  }
+
   interface DocSpec {
     readonly client: string;
     readonly title: string;
     readonly kind: "labor" | "material";
     readonly costCents: number;
     readonly markupBps: number;
+    /**
+     * Real quotes are itemised — panel, cable, permit, labour — and the whole
+     * point of the app is seeing margin per line. Jobs that supply `lines` must
+     * have them sum to `costCents` at the same markup, so the headline totals
+     * (and every KPI derived from them) are unchanged by the breakdown.
+     */
+    readonly lines?: readonly LineSpec[];
   }
 
   async function estimateWith(spec: DocSpec): Promise<string> {
@@ -95,15 +109,20 @@ export async function seedDemo(base: DbCtx): Promise<void> {
       newClientName: spec.client,
       jobTitle: spec.title,
     });
-    await addCustomLine(ctx, est.id, {
-      kind: spec.kind,
-      description: spec.title,
-      quantity: 1,
-      unit: "job",
-      unitCostCents: spec.costCents,
-      markupPct: spec.markupBps,
-      isTaxable: false,
-    });
+    const lines: readonly LineSpec[] = spec.lines ?? [
+      { kind: spec.kind, description: spec.title, costCents: spec.costCents, markupBps: spec.markupBps },
+    ];
+    for (const line of lines) {
+      await addCustomLine(ctx, est.id, {
+        kind: line.kind,
+        description: line.description,
+        quantity: 1,
+        unit: "job",
+        unitCostCents: line.costCents,
+        markupPct: line.markupBps,
+        isTaxable: false,
+      });
+    }
     return est.id;
   }
 
@@ -133,7 +152,16 @@ export async function seedDemo(base: DbCtx): Promise<void> {
   // ---------------------------------------------------------------------------
   const novakIssued = thisMonth(2);
   await invoiceFlow(
-    { client: "Novak", title: "Panel upgrade — 200A service", kind: "material", costCents: 800000, markupBps: 5500 },
+    {
+      client: "Novak", title: "Panel upgrade — 200A service", kind: "material",
+      costCents: 800000, markupBps: 5500,
+      lines: [
+        { kind: "material", description: "200A panel + meter base", costCents: 320000, markupBps: 5500 },
+        { kind: "material", description: "Service entrance cable + conduit", costCents: 180000, markupBps: 5500 },
+        { kind: "labor", description: "Panel swap + terminations", costCents: 240000, markupBps: 5500 },
+        { kind: "material", description: "Permit + utility coordination", costCents: 60000, markupBps: 5500 },
+      ],
+    },
     novakIssued,
     { fractionBps: 10_000, paidMs: payAfter(novakIssued, 0.55) },
   ); // $12,400 paid
@@ -146,7 +174,15 @@ export async function seedDemo(base: DbCtx): Promise<void> {
     thisMonth(5),
   ); // $2,325 sent
   await invoiceFlow(
-    { client: "Hartley", title: "Deck lighting", kind: "material", costCents: 115000, markupBps: 6000 },
+    {
+      client: "Hartley", title: "Deck lighting", kind: "material",
+      costCents: 115000, markupBps: 6000,
+      lines: [
+        { kind: "material", description: "Low-voltage deck fixtures (8)", costCents: 68000, markupBps: 6000 },
+        { kind: "material", description: "Transformer + direct-burial wire", costCents: 22000, markupBps: 6000 },
+        { kind: "labor", description: "Trenching + install", costCents: 25000, markupBps: 6000 },
+      ],
+    },
     thisMonth(17),
   ); // $1,840 — past its 14d terms → derived overdue
   const delgadoIssued = thisMonth(8);
@@ -190,7 +226,13 @@ export async function seedDemo(base: DbCtx): Promise<void> {
   // these never touch revenue or the health margin.
   atAbs(thisMonth(12));
   const salazar = await estimateWith({
-    client: "Salazar", title: "Standby generator hookup", kind: "material", costCents: 110000, markupBps: 5000,
+    client: "Salazar", title: "Standby generator hookup", kind: "material",
+    costCents: 110000, markupBps: 5000,
+    lines: [
+      { kind: "material", description: "Generator pad + conduit", costCents: 42000, markupBps: 5000 },
+      { kind: "material", description: "200A transfer switch", costCents: 38000, markupBps: 5000 },
+      { kind: "labor", description: "Hookup + commissioning", costCents: 30000, markupBps: 5000 },
+    ],
   });
   await sendEstimate(ctx, salazar);
   atAbs(thisMonth(10));
