@@ -1,8 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { authErrorMessage } from "@/lib/errors";
 import { createClient } from "@/lib/supabase/client";
+
+type Mode = "signin" | "signup" | "reset";
+
+const MIN_PASSWORD = 8;
+
+/**
+ * Sent for every reset request, whether or not the address has an account —
+ * a form that answers differently is a list of your users.
+ */
+const RESET_SENT =
+  "If that email has a FastTrack account, a reset link is on its way. The link expires in an hour.";
+
+const LINK_ERRORS: Readonly<Record<string, string>> = {
+  link_expired: "That link has expired or was already used. Request a new one below.",
+  link_invalid: "That link was not valid. Request a new one below.",
+};
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -14,38 +31,100 @@ const inputStyle: React.CSSProperties = {
   fontFamily: "inherit",
 };
 
+const linkStyle: React.CSSProperties = {
+  fontSize: 13,
+  fontWeight: 700,
+  color: "var(--accent-soft)",
+};
+
 export default function LoginPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [isError, setIsError] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
+
+  // Read after mount rather than via useSearchParams: this page prerenders, and
+  // useSearchParams would force it behind a Suspense boundary for one banner.
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("error");
+    if (code && LINK_ERRORS[code]) {
+      setMode("reset");
+      setIsError(true);
+      setMessage(LINK_ERRORS[code]);
+    }
+  }, []);
+
+  function switchTo(next: Mode) {
+    setMode(next);
+    setMessage(null);
+    setIsError(false);
+  }
+
+  function fail(error: unknown) {
+    setIsError(true);
+    setMessage(authErrorMessage(error));
+    setIsBusy(false);
+  }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setIsBusy(true);
     setMessage(null);
+    setIsError(false);
     const supabase = createClient();
 
-    if (mode === "signup") {
-      const { error } = await supabase.auth.signUp({ email, password });
-      setMessage(
-        error ? error.message : "Check your email to confirm your account, then sign in.",
-      );
+    if (mode === "reset") {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+      });
+      // Rate limiting is the one failure worth surfacing; every other outcome
+      // reports success so the response cannot confirm an address.
+      if (error && /rate limit/i.test(String(error.message))) {
+        fail(error);
+        return;
+      }
+      setIsError(false);
+      setMessage(RESET_SENT);
       setIsBusy(false);
       return;
     }
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setMessage(error.message);
+    if (mode === "signup") {
+      const { error } = await supabase.auth.signUp({ email: email.trim(), password });
+      if (error) {
+        fail(error);
+        return;
+      }
+      setMessage("Check your email to confirm your account, then sign in.");
       setIsBusy(false);
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (error) {
+      fail(error);
       return;
     }
     router.push("/");
     router.refresh();
   }
+
+  const heading =
+    mode === "signin"
+      ? "Sign in to your dashboard"
+      : mode === "signup"
+        ? "Create your account"
+        : "Reset your password";
+
+  const blurb =
+    mode === "reset"
+      ? "Enter the email you signed up with and we will send you a reset link."
+      : "Review your numbers. Estimates and invoices are created in the FastTrack app.";
+
+  const cta = mode === "signin" ? "Sign in" : mode === "signup" ? "Sign up" : "Send reset link";
 
   return (
     <main
@@ -81,32 +160,34 @@ export default function LoginPage() {
         </div>
 
         <h1 style={{ font: "700 21px/1.2 var(--font-jakarta)", letterSpacing: "-.02em" }}>
-          {mode === "signin" ? "Sign in to your dashboard" : "Create your account"}
+          {heading}
         </h1>
-        <p style={{ marginTop: 7, color: "var(--muted)", fontSize: 13.5 }}>
-          Review your numbers. Estimates and invoices are created in the FastTrack app.
-        </p>
+        <p style={{ marginTop: 7, color: "var(--muted)", fontSize: 13.5 }}>{blurb}</p>
 
         <form onSubmit={submit} style={{ marginTop: 20, display: "grid", gap: 11 }}>
           <input
             type="email"
             required
             placeholder="you@company.com"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             style={inputStyle}
             aria-label="Email"
           />
-          <input
-            type="password"
-            required
-            minLength={8}
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={inputStyle}
-            aria-label="Password"
-          />
+          {mode !== "reset" && (
+            <input
+              type="password"
+              required
+              minLength={MIN_PASSWORD}
+              placeholder="Password"
+              autoComplete={mode === "signup" ? "new-password" : "current-password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              style={inputStyle}
+              aria-label="Password"
+            />
+          )}
           <button
             type="submit"
             disabled={isBusy}
@@ -120,25 +201,45 @@ export default function LoginPage() {
               opacity: isBusy ? 0.7 : 1,
             }}
           >
-            {isBusy ? "Working…" : mode === "signin" ? "Sign in" : "Sign up"}
+            {isBusy ? "Working…" : cta}
           </button>
         </form>
 
         {message && (
-          <p role="status" style={{ marginTop: 12, fontSize: 13, color: "var(--muted)" }}>
+          <p
+            role={isError ? "alert" : "status"}
+            style={{
+              marginTop: 12,
+              fontSize: 13,
+              color: isError ? "var(--red)" : "var(--muted)",
+            }}
+          >
             {message}
           </p>
         )}
 
-        <button
-          onClick={() => {
-            setMode(mode === "signin" ? "signup" : "signin");
-            setMessage(null);
-          }}
-          style={{ marginTop: 16, fontSize: 13, fontWeight: 700, color: "var(--accent-soft)" }}
-        >
-          {mode === "signin" ? "New here? Create an account" : "Have an account? Sign in"}
-        </button>
+        <div style={{ marginTop: 16, display: "flex", flexWrap: "wrap", gap: 14 }}>
+          {mode === "signin" && (
+            <>
+              <button onClick={() => switchTo("signup")} style={linkStyle}>
+                New here? Create an account
+              </button>
+              <button onClick={() => switchTo("reset")} style={linkStyle}>
+                Forgot password?
+              </button>
+            </>
+          )}
+          {mode === "signup" && (
+            <button onClick={() => switchTo("signin")} style={linkStyle}>
+              Have an account? Sign in
+            </button>
+          )}
+          {mode === "reset" && (
+            <button onClick={() => switchTo("signin")} style={linkStyle}>
+              Back to sign in
+            </button>
+          )}
+        </div>
       </div>
     </main>
   );

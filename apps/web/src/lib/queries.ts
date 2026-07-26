@@ -22,6 +22,7 @@ import {
   type Organization,
   type Payment,
 } from "@fasttrack/schema";
+import { logServerError } from "@/lib/errors";
 import { createClient } from "@/lib/supabase/server";
 
 type SupabaseServer = Awaited<ReturnType<typeof createClient>>;
@@ -46,7 +47,10 @@ async function selectRows<T>(
     .is("deleted_at", null)
     .limit(ROW_LIMIT);
   if (error) {
-    throw new Error(`Failed to load ${table}: ${error.message}`);
+    // Next hides thrown server-component messages behind a digest in
+    // production, but log the detail deliberately rather than relying on that.
+    logServerError(`load ${table}`, error);
+    throw new Error("Could not load your dashboard data.");
   }
   return (data ?? []).map((row) => schema.parse(row));
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { completeOnboarding } from "@/lib/actions";
 
 const TRADES = [
   ["electrical", "Electrical"],
@@ -45,55 +45,22 @@ export default function OnboardingPage() {
     event.preventDefault();
     setIsBusy(true);
     setError(null);
-    const supabase = createClient();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user || !user.email) {
-      setError("Your session expired — sign in again.");
+    // The whole bootstrap runs in one server action: it validates the numbers
+    // where the browser cannot reach them, and reports one message if any of
+    // the five writes fails.
+    const result = await completeOnboarding({
+      business_name: businessName,
+      your_name: yourName,
+      trade,
+      tax_rate_pct: taxRatePct,
+      target_margin_pct: targetMarginPct,
+    });
+
+    if (!result.ok) {
+      setError(result.error);
       setIsBusy(false);
       return;
-    }
-
-    const orgId = crypto.randomUUID();
-    const taxRateBps = Math.round(Number.parseFloat(taxRatePct) * 100);
-    const targetMarginBps = Math.round(Number.parseFloat(targetMarginPct) * 100);
-
-    // Bootstrap order matters: users row (RLS: own id), org, owner membership,
-    // then the two seeders copy this trade's price book + default categories.
-    const steps = [
-      async () =>
-        supabase.from("users").upsert({ id: user.id, email: user.email, name: yourName }),
-      async () =>
-        supabase.from("organizations").insert({
-          id: orgId,
-          name: businessName,
-          logo_url: null,
-          address: null,
-          license_no: null,
-          trade,
-          tax_config: { name: "Sales Tax", rate_bps: taxRateBps },
-          target_margin_bps: targetMarginBps,
-        }),
-      async () =>
-        supabase.from("memberships").insert({
-          id: crypto.randomUUID(),
-          org_id: orgId,
-          user_id: user.id,
-          role: "owner",
-        }),
-      async () => supabase.rpc("seed_price_book", { target_org: orgId }),
-      async () => supabase.rpc("seed_expense_categories", { target_org: orgId }),
-    ];
-
-    for (const step of steps) {
-      const { error: stepError } = await step();
-      if (stepError) {
-        setError(stepError.message);
-        setIsBusy(false);
-        return;
-      }
     }
 
     router.push("/");
@@ -122,12 +89,12 @@ export default function OnboardingPage() {
         <form onSubmit={submit} style={{ marginTop: 20, display: "grid", gap: 14 }}>
           <div>
             <label style={labelStyle} htmlFor="business">Business name</label>
-            <input id="business" required value={businessName} placeholder="Reyes Electric"
+            <input id="business" required maxLength={120} value={businessName} placeholder="Reyes Electric"
               onChange={(e) => setBusinessName(e.target.value)} style={inputStyle} />
           </div>
           <div>
             <label style={labelStyle} htmlFor="yourname">Your name</label>
-            <input id="yourname" required value={yourName} placeholder="Marcus Reyes"
+            <input id="yourname" required maxLength={120} value={yourName} placeholder="Marcus Reyes"
               onChange={(e) => setYourName(e.target.value)} style={inputStyle} />
           </div>
           <div>

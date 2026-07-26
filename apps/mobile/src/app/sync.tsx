@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,7 +16,9 @@ import { PrimaryButton } from "@/components/ui/Buttons";
 import { HomeButton } from "@/components/ui/HomeButton";
 import { Icon } from "@/components/ui/Icon";
 import { useDb } from "@/db/DbProvider";
+import { authErrorMessage, syncErrorMessage } from "@/lib/authErrors";
 import { canSync } from "@/lib/gating";
+import { WEB_URL } from "@/lib/webUrl";
 import { useEntitlement } from "@/subscriptions/SubscriptionProvider";
 import { pushAll, supabaseTarget, type PushSummaryEntry } from "@/sync/push";
 import { getAuthedSupabase, getSupabase } from "@/sync/supabaseClient";
@@ -51,7 +54,7 @@ export default function SyncScreen() {
       const supabase = getSupabase();
       if (mode === "signup") {
         const { error } = await supabase.auth.signUp({ email: email.trim(), password });
-        if (error) throw new Error(error.message);
+        if (error) return failAuth(error);
         setPhase("idle");
         setMessage("Check your email to confirm the account, then sign in here.");
         return;
@@ -60,12 +63,13 @@ export default function SyncScreen() {
         email: email.trim(),
         password,
       });
-      if (error) throw new Error(error.message);
+      if (error) return failAuth(error);
       const user = data.user;
       const session = data.session;
-      if (!user?.email) throw new Error("Sign-in returned no user");
-      if (!session?.access_token) {
-        throw new Error("Sign-in returned no session — confirm your email, then try again.");
+      if (!user?.email || !session?.access_token) {
+        setPhase("error");
+        setMessage("Confirm your email address first, then sign in again.");
+        return;
       }
 
       setPhase("pushing");
@@ -82,11 +86,102 @@ export default function SyncScreen() {
       setPhase("done");
     } catch (e: unknown) {
       setPhase("error");
-      setMessage(e instanceof Error ? e.message : "Sync failed");
+      setMessage(syncErrorMessage(e));
     }
   };
 
+  const failAuth = (error: unknown) => {
+    setPhase("error");
+    setMessage(authErrorMessage(error));
+  };
+
+  /**
+   * Recovery finishes on the web dashboard rather than in the app: the emailed
+   * link lands on /auth/callback, which needs no iOS deep-link registration and
+   * no extra App Store review surface. The owner then signs in here as usual.
+   */
+  const sendReset = async () => {
+    const address = email.trim();
+    if (!address) {
+      setPhase("error");
+      setMessage("Enter your email address first.");
+      return;
+    }
+    setPhase("authing");
+    setMessage(null);
+    try {
+      const { error } = await getSupabase().auth.resetPasswordForEmail(address, {
+        redirectTo: `${WEB_URL}/auth/callback?next=/reset-password`,
+      });
+      // Only rate limiting is worth naming; every other outcome reports the
+      // same thing so the screen cannot confirm which addresses have accounts.
+      if (error && /rate limit/i.test(String(error.message))) return failAuth(error);
+      setPhase("idle");
+      setMessage(
+        "If that email has a FastTrack account, a reset link is on its way. Open it on any device, set a new password, then sign in here.",
+      );
+    } catch (e: unknown) {
+      setPhase("error");
+      setMessage(syncErrorMessage(e));
+    }
+  };
+
+  /**
+   * Erases the cloud account. Apple requires an in-app path to this for any
+   * app that lets you create an account (guideline 5.1.1(v)); it is also the
+   * erasure right under GDPR/CCPA. Books on this phone are untouched — the
+   * local database is the source of truth, the cloud copy is the mirror.
+   */
+  const runDelete = async () => {
+    setPhase("authing");
+    setMessage(null);
+    setSummary(null);
+    try {
+      const supabase = getSupabase();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (error) return failAuth(error);
+      const token = data.session?.access_token;
+      if (!token) {
+        setPhase("error");
+        setMessage("Confirm your email address first, then try again.");
+        return;
+      }
+
+      const { error: deleteError } = await getAuthedSupabase(token).rpc("delete_own_account");
+      if (deleteError) {
+        setPhase("error");
+        setMessage(syncErrorMessage(deleteError));
+        return;
+      }
+
+      await supabase.auth.signOut();
+      setPassword("");
+      setPhase("done");
+      setMessage(
+        "Your cloud account and every synced record have been deleted. Your books are still on this phone.",
+      );
+    } catch (e: unknown) {
+      setPhase("error");
+      setMessage(syncErrorMessage(e));
+    }
+  };
+
+  const confirmDelete = () => {
+    Alert.alert(
+      "Delete cloud account?",
+      "This permanently erases your FastTrack cloud account and every record synced to it. Your books stay on this phone. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: runDelete },
+      ],
+    );
+  };
+
   const isBusy = phase === "authing" || phase === "pushing";
+  const hasCredentials = email.trim().length > 0 && password.length > 0;
 
   return (
     <View style={styles.root}>
@@ -157,6 +252,23 @@ export default function SyncScreen() {
           {mode === "signin" ? "New here? Create an account" : "Have an account? Sign in"}
         </Text>
       </Pressable>
+      {mode === "signin" ? (
+        <>
+          <Pressable onPress={sendReset} disabled={isBusy} accessibilityRole="button">
+            <Text style={styles.switchMode}>Forgot password?</Text>
+          </Pressable>
+          <Pressable
+            onPress={confirmDelete}
+            disabled={isBusy || !hasCredentials}
+            accessibilityRole="button"
+            accessibilityLabel="Delete cloud account"
+          >
+            <Text style={[styles.danger, !hasCredentials && styles.dangerDisabled]}>
+              Delete cloud account
+            </Text>
+          </Pressable>
+        </>
+      ) : null}
 
       {isBusy ? <ActivityIndicator color={colors.green} style={styles.spinner} /> : null}
       {message ? (
@@ -255,6 +367,16 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans700,
     color: colors.green,
     textAlign: "center",
+  },
+  danger: {
+    marginTop: 18,
+    fontSize: 13,
+    fontFamily: fonts.sans700,
+    color: colors.red,
+    textAlign: "center",
+  },
+  dangerDisabled: {
+    opacity: 0.4,
   },
   spinner: {
     marginTop: 16,

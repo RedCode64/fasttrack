@@ -6,11 +6,11 @@ import { ScreenGlow } from "@/components/ScreenGlow";
 import { PrimaryButton } from "@/components/ui/Buttons";
 import { Icon } from "@/components/ui/Icon";
 import { FREE_CLIENT_CAP, FREE_DOCUMENT_CAP } from "@/lib/gating";
+import { WEB_URL } from "@/lib/webUrl";
 import { useEntitlement } from "@/subscriptions/SubscriptionProvider";
 import type { ProPackage } from "@/subscriptions/purchasesClient";
 import { colors, fonts, spacing } from "@/theme";
 
-const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL ?? "https://fasttrack-web-ten.vercel.app";
 const PRIVACY_URL = `${WEB_URL}/privacy`;
 // Apple's standard auto-renewing-subscription EULA (accepted default Terms of Use).
 const TERMS_URL = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/";

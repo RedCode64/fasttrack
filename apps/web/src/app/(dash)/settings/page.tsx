@@ -1,3 +1,4 @@
+import { DeleteAccount } from "@/components/DeleteAccount";
 import { SettingsForm } from "@/components/SettingsForm";
 import { getOrgContext } from "@/lib/queries";
 
@@ -17,6 +18,7 @@ export default async function SettingsPage() {
       </div>
 
       <SettingsForm org={org} />
+      <DeleteAccount />
     </>
   );
 }

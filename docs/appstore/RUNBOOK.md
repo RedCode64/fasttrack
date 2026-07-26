@@ -54,6 +54,12 @@ Prereqs: bundle id is `com.fasttrackapp.mobile`, version `1.0.0` build `1`.
 - Attach build `1.0.0 (1)`, answer export-compliance (encryption: No / exempt), then **Submit for Review**.
 
 ## Gotchas
+- **Account deletion is mandatory** (guideline 5.1.1(v)) and is built — Sync screen →
+  **Delete cloud account**. Point the reviewer at it in the review notes; see
+  `app-privacy.md`. Apps that create accounts get rejected without it.
+- Two Supabase Auth settings are owner-only and worth turning on before launch
+  (Dashboard → Authentication): **leaked password protection** (blocks passwords
+  found in HaveIBeenPwned) and **CAPTCHA** (Turnstile/hCaptcha) on sign-up.
 - "Missing Compliance": already handled via `ITSAppUsesNonExemptEncryption: false` in `app.json`.
 - Subscriptions must be **submitted with the app version** the first time (select them under the version).
 - Restore Purchases + visible Terms/Privacy on the paywall are mandatory — already built in `paywall.tsx`.

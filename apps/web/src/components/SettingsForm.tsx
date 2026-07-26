@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Organization } from "@fasttrack/schema";
-import { createClient } from "@/lib/supabase/client";
+import { updateOrgSettings } from "@/lib/actions";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -40,25 +40,19 @@ export function SettingsForm({ org }: { org: Organization }) {
     event.preventDefault();
     setIsBusy(true);
     setMessage(null);
-    const supabase = createClient();
 
-    const { error } = await supabase
-      .from("organizations")
-      .update({
-        name,
-        address: address || null,
-        license_no: licenseNo || null,
-        tax_config: {
-          name: taxName,
-          rate_bps: Math.round(Number.parseFloat(taxRatePct) * 100),
-        },
-        target_margin_bps: Math.round(Number.parseFloat(targetMarginPct) * 100),
-      })
-      .eq("id", org.id);
+    const result = await updateOrgSettings({
+      name,
+      address,
+      license_no: licenseNo,
+      tax_name: taxName,
+      tax_rate_pct: taxRatePct,
+      target_margin_pct: targetMarginPct,
+    });
 
-    setMessage(error ? error.message : "Saved.");
+    setMessage(result.ok ? "Saved." : result.error);
     setIsBusy(false);
-    if (!error) {
+    if (result.ok) {
       router.refresh();
     }
   }
@@ -67,20 +61,20 @@ export function SettingsForm({ org }: { org: Organization }) {
     <form onSubmit={submit} className="card" style={{ padding: "24px 24px", maxWidth: 560, display: "grid", gap: 15 }}>
       <div>
         <label style={labelStyle} htmlFor="s-name">Business name</label>
-        <input id="s-name" required value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
+        <input id="s-name" required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
       </div>
       <div>
         <label style={labelStyle} htmlFor="s-address">Address</label>
-        <input id="s-address" value={address} onChange={(e) => setAddress(e.target.value)} style={inputStyle} />
+        <input id="s-address" maxLength={240} value={address} onChange={(e) => setAddress(e.target.value)} style={inputStyle} />
       </div>
       <div>
         <label style={labelStyle} htmlFor="s-license">License #</label>
-        <input id="s-license" value={licenseNo} onChange={(e) => setLicenseNo(e.target.value)} style={inputStyle} />
+        <input id="s-license" maxLength={60} value={licenseNo} onChange={(e) => setLicenseNo(e.target.value)} style={inputStyle} />
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12 }}>
         <div>
           <label style={labelStyle} htmlFor="s-taxname">Tax name</label>
-          <input id="s-taxname" required value={taxName} onChange={(e) => setTaxName(e.target.value)} style={inputStyle} />
+          <input id="s-taxname" required maxLength={120} value={taxName} onChange={(e) => setTaxName(e.target.value)} style={inputStyle} />
         </div>
         <div>
           <label style={labelStyle} htmlFor="s-taxrate">Tax %</label>
