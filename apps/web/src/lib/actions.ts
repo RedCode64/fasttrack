@@ -387,9 +387,10 @@ export async function deleteOwnAccount(confirmation: unknown): Promise<ActionRes
   const { error } = await supabase.rpc("delete_own_account");
   if (error) return { ok: false, error: dbErrorMessage("deleteOwnAccount", error) };
 
-  // The session now points at a user that no longer exists; drop the cookies
-  // rather than leave the browser holding a token nothing will accept.
-  await supabase.auth.signOut();
+  // scope:"local" — the session points at a user that no longer exists, so a
+  // server-side logout is guaranteed to 403 and would leave the dead cookies
+  // in the browser, which then reads as a broken half-signed-in state.
+  await supabase.auth.signOut({ scope: "local" });
   revalidatePath("/", "layout");
   return { ok: true };
 }

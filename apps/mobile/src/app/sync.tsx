@@ -39,10 +39,6 @@ export default function SyncScreen() {
   const [summary, setSummary] = useState<readonly PushSummaryEntry[] | null>(null);
 
   const linkAndPush = async () => {
-    if (!canSync(isPro)) {
-      router.push("/paywall");
-      return;
-    }
     if (!org) {
       setMessage("Finish onboarding first.");
       return;
@@ -69,6 +65,17 @@ export default function SyncScreen() {
       if (!user?.email || !session?.access_token) {
         setPhase("error");
         setMessage("Confirm your email address first, then sign in again.");
+        return;
+      }
+
+      // Pushing is the Pro feature; having an account is not. Gating sign-in
+      // itself stranded anyone who deleted their account behind the paywall
+      // with no way back — and Apple requires deletion to be reversible by
+      // simply signing up again.
+      if (!canSync(isPro)) {
+        await supabase.auth.signOut({ scope: "local" });
+        setPhase("idle");
+        router.push("/paywall");
         return;
       }
 
@@ -132,7 +139,7 @@ export default function SyncScreen() {
    * erasure right under GDPR/CCPA. Books on this phone are untouched — the
    * local database is the source of truth, the cloud copy is the mirror.
    */
-  const runDelete = async () => {
+  const startDelete = async () => {
     setPhase("authing");
     setMessage(null);
     setSummary(null);
@@ -142,26 +149,37 @@ export default function SyncScreen() {
         email: email.trim(),
         password,
       });
+      // Credentials are checked before the prompt appears, so typing someone
+      // else's address gets an auth failure and never a destructive dialog.
       if (error) return failAuth(error);
       const token = data.session?.access_token;
-      if (!token) {
+      const verified = data.user?.email;
+      if (!token || !verified) {
         setPhase("error");
         setMessage("Confirm your email address first, then try again.");
         return;
       }
 
-      const { error: deleteError } = await getAuthedSupabase(token).rpc("delete_own_account");
-      if (deleteError) {
-        setPhase("error");
-        setMessage(syncErrorMessage(deleteError));
-        return;
-      }
-
-      await supabase.auth.signOut();
-      setPassword("");
-      setPhase("done");
-      setMessage(
-        "Your cloud account and every synced record have been deleted. Your books are still on this phone.",
+      setPhase("idle");
+      Alert.alert(
+        "Delete this account?",
+        `This permanently erases ${verified} and every record synced to it. Your books stay on this phone. This cannot be undone.`,
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+            onPress: () => {
+              void supabase.auth.signOut({ scope: "local" });
+            },
+          },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: () => {
+              void eraseAccount(token);
+            },
+          },
+        ],
       );
     } catch (e: unknown) {
       setPhase("error");
@@ -169,15 +187,29 @@ export default function SyncScreen() {
     }
   };
 
-  const confirmDelete = () => {
-    Alert.alert(
-      "Delete cloud account?",
-      "This permanently erases your FastTrack cloud account and every record synced to it. Your books stay on this phone. This cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: runDelete },
-      ],
-    );
+  const eraseAccount = async (token: string) => {
+    setPhase("authing");
+    try {
+      const { error } = await getAuthedSupabase(token).rpc("delete_own_account");
+      if (error) {
+        setPhase("error");
+        setMessage(syncErrorMessage(error));
+        return;
+      }
+
+      // scope:"local" — the session belongs to a user that no longer exists, so
+      // a server-side logout is guaranteed to 403 and would leave the dead
+      // token sitting on the device.
+      await getSupabase().auth.signOut({ scope: "local" });
+      setPassword("");
+      setPhase("done");
+      setMessage(
+        "Your cloud account and every synced record have been deleted. Your books are still on this phone, and you can create a new account whenever you want.",
+      );
+    } catch (e: unknown) {
+      setPhase("error");
+      setMessage(syncErrorMessage(e));
+    }
   };
 
   const isBusy = phase === "authing" || phase === "pushing";
@@ -258,7 +290,7 @@ export default function SyncScreen() {
             <Text style={styles.switchMode}>Forgot password?</Text>
           </Pressable>
           <Pressable
-            onPress={confirmDelete}
+            onPress={startDelete}
             disabled={isBusy || !hasCredentials}
             accessibilityRole="button"
             accessibilityLabel="Delete cloud account"
