@@ -11,13 +11,14 @@ import {
 
 import { ScreenGlow } from "@/components/ScreenGlow";
 import { PrimaryButton } from "@/components/ui/Buttons";
+import { CapNotice } from "@/components/ui/CapNotice";
 import { HomeButton } from "@/components/ui/HomeButton";
 import { Icon } from "@/components/ui/Icon";
 import { useDb, useQuery } from "@/db/DbProvider";
 import { listClients } from "@/db/repos/clientRepo";
 import { createDraft, listEstimates } from "@/db/repos/estimateRepo";
 import { listInvoices } from "@/db/repos/invoiceRepo";
-import { canAddClient, canAddDocument } from "@/lib/gating";
+import { canAddClient, canAddDocument, createDocumentWarning } from "@/lib/gating";
 import { useEntitlement } from "@/subscriptions/SubscriptionProvider";
 import { colors, fonts, spacing } from "@/theme";
 
@@ -50,15 +51,26 @@ export default function NewEstimate() {
     jobTitle.trim().length > 0 &&
     (mode === "new" ? newClientName.trim().length > 0 : clientId !== null);
 
+  const clientCount = clients.data?.length ?? 0;
+  const docCount = (estimates.data?.length ?? 0) + (invoices.data?.length ?? 0);
+
+  const notice = createDocumentWarning({
+    createsNewClient: mode === "new",
+    clientCount,
+    documentCount: docCount,
+    isPro,
+  });
+  const blocked = notice?.state === "reached";
+
+  const openPaywall = () => router.push("/paywall");
+
   const create = async () => {
-    const clientCount = clients.data?.length ?? 0;
-    const docCount = (estimates.data?.length ?? 0) + (invoices.data?.length ?? 0);
     if (mode === "new" && !canAddClient(clientCount, isPro)) {
-      router.push("/paywall");
+      openPaywall();
       return;
     }
     if (!canAddDocument(docCount, isPro)) {
-      router.push("/paywall");
+      openPaywall();
       return;
     }
     setBusy(true);
@@ -158,10 +170,12 @@ export default function NewEstimate() {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
+      {notice ? <CapNotice state={notice.state} kind={notice.kind} /> : null}
+
       <PrimaryButton
-        label={busy ? "Creating…" : "Create draft"}
-        onPress={create}
-        disabled={busy || !canCreate}
+        label={blocked ? "See Pro plans" : busy ? "Creating…" : "Create draft"}
+        onPress={blocked ? openPaywall : create}
+        disabled={busy || (!blocked && !canCreate)}
         style={styles.submit}
       />
       </ScrollView>

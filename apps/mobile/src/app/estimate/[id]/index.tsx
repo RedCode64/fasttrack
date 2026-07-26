@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ScreenGlow } from "@/components/ScreenGlow";
 import { GhostButton, PrimaryButton } from "@/components/ui/Buttons";
+import { CapNotice } from "@/components/ui/CapNotice";
 import { HeroGradient } from "@/components/ui/HeroGradient";
 import { HomeButton } from "@/components/ui/HomeButton";
 import { Icon } from "@/components/ui/Icon";
@@ -19,7 +20,7 @@ import {
 import { convertFromEstimate, invoiceForEstimate, listInvoices } from "@/db/repos/invoiceRepo";
 import { estimatePdfInput } from "@/lib/docPdf";
 import { money, pctFromBps } from "@/lib/format";
-import { canAddDocument } from "@/lib/gating";
+import { canAddDocument, capState, FREE_DOCUMENT_CAP } from "@/lib/gating";
 import { buildDocumentHtml, documentFileName } from "@/lib/pdf";
 import { sharePdf } from "@/lib/printPdf";
 import { useEntitlement } from "@/subscriptions/SubscriptionProvider";
@@ -74,10 +75,19 @@ export default function EstimateDetailScreen() {
     });
   const accept = () => run(() => mutate((c) => markAccepted(c, id)));
   const decline = () => run(() => mutate((c) => markDeclined(c, id)));
+  const docCount = (estimates.data?.length ?? 0) + (invoices.data?.length ?? 0);
+  const documentState = capState(docCount, FREE_DOCUMENT_CAP, isPro);
+  // Converting is the only capped action on this screen, and only while an
+  // accepted estimate has no invoice yet — don't warn about a cap the user
+  // isn't about to hit.
+  const convertIsNext = status === "accepted" && !convertedId.data;
+  const convertBlocked = convertIsNext && documentState === "reached";
+
+  const openPaywall = () => router.push("/paywall");
+
   const convert = () => {
-    const docCount = (estimates.data?.length ?? 0) + (invoices.data?.length ?? 0);
     if (!canAddDocument(docCount, isPro)) {
-      router.push("/paywall");
+      openPaywall();
       return;
     }
     void run(async () => {
@@ -167,6 +177,10 @@ export default function EstimateDetailScreen() {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
+      {convertIsNext ? (
+        <CapNotice state={documentState} kind="document" style={styles.capNotice} />
+      ) : null}
+
       <View style={styles.actions}>
         {status === "draft" ? (
           <>
@@ -191,7 +205,13 @@ export default function EstimateDetailScreen() {
             {convertedId.data ? (
               <PrimaryButton label="View invoice" icon="receipt" onPress={viewInvoice} disabled={busy} style={styles.actionPrimary} />
             ) : (
-              <PrimaryButton label="Convert to invoice" icon="receipt" onPress={convert} disabled={busy} style={styles.actionPrimary} />
+              <PrimaryButton
+                label={convertBlocked ? "See Pro plans" : "Convert to invoice"}
+                icon="receipt"
+                onPress={convertBlocked ? openPaywall : convert}
+                disabled={busy}
+                style={styles.actionPrimary}
+              />
             )}
           </>
         ) : null}
@@ -380,6 +400,9 @@ const styles = StyleSheet.create({
     gap: 10,
     marginHorizontal: spacing.screenX,
     marginTop: 18,
+  },
+  capNotice: {
+    marginHorizontal: spacing.screenX,
   },
   actionGhost: {
     flex: 1,

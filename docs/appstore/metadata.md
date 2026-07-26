@@ -30,8 +30,9 @@ FASTTRACK PRO
 - Unlimited clients and documents
 - Clean, unbranded PDFs
 - Cloud sync to the FastTrack web dashboard across devices
+- Plans start at $4.99 per week, with monthly and annual options
 
-Pro is an auto-renewing subscription (monthly or annual). Payment is charged to your Apple ID; subscriptions renew automatically unless cancelled at least 24 hours before the period ends. Manage or cancel anytime in App Store account settings.
+Pro is an auto-renewing subscription (weekly, monthly, or annual). Payment is charged to your Apple ID; subscriptions renew automatically unless cancelled at least 24 hours before the period ends. Manage or cancel anytime in App Store account settings.
 
 Terms: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 Privacy: https://fasttrack-web-ten.vercel.app/privacy
@@ -49,4 +50,4 @@ estimate,invoice,contractor,tradesman,receipt,expenses,quote,job,electrician,plu
 
 **App Review notes:**
 - The app works fully offline without an account. Cloud Sync (optional) needs an account.
-- FastTrack Pro is an auto-renewing subscription. To test: open the app, exceed the free cap (3 clients or 5 documents) or open the Sync screen to reach the paywall; purchase with the sandbox account.
+- FastTrack Pro is an auto-renewing subscription. To test: open the app, exceed the free cap (5 clients or 10 documents) or open the Sync screen to reach the paywall; purchase with the sandbox account.
