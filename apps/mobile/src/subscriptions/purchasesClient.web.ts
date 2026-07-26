@@ -7,7 +7,12 @@
 export interface ProPackage {
   readonly identifier: string;
   readonly packageType: string;
-  readonly product: { readonly priceString: string; readonly title: string };
+  readonly product: {
+    readonly priceString: string;
+    readonly title: string;
+    readonly pricePerMonth: number | null;
+    readonly pricePerMonthString: string | null;
+  };
 }
 
 export async function configurePurchases(_apiKey: string): Promise<void> {

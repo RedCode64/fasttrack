@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ScreenGlow } from "@/components/ScreenGlow";
@@ -8,6 +8,7 @@ import { Icon } from "@/components/ui/Icon";
 import { FREE_CLIENT_CAP, FREE_DOCUMENT_CAP } from "@/lib/gating";
 import { WEB_URL } from "@/lib/webUrl";
 import { useEntitlement } from "@/subscriptions/SubscriptionProvider";
+import { buildPlanViews, recommendedPlanIdentifier } from "@/subscriptions/plans";
 import type { ProPackage } from "@/subscriptions/purchasesClient";
 import { colors, fonts, spacing } from "@/theme";
 
@@ -24,12 +25,16 @@ const PRO_FEATURES: readonly string[] = [
 export default function PaywallScreen() {
   const router = useRouter();
   const { packages, error: loadError, purchase, restore } = useEntitlement();
-  const [selected, setSelected] = useState<string | null>(packages[0]?.identifier ?? null);
+  const [selected, setSelected] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const plans = useMemo(() => buildPlanViews(packages), [packages]);
+  // Offerings arrive after first render, so the preselection is derived rather
+  // than seeded into state — otherwise it would stick on the empty list.
+  const activeId = selected ?? recommendedPlanIdentifier(plans);
   const activePkg: ProPackage | undefined =
-    packages.find((p) => p.identifier === selected) ?? packages[0];
+    packages.find((p) => p.identifier === activeId) ?? packages[0];
 
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
@@ -84,20 +89,41 @@ export default function PaywallScreen() {
         </Text>
       ) : (
         <View style={styles.plans}>
-          {packages.map((pkg) => {
-            const active = (activePkg?.identifier ?? null) === pkg.identifier;
+          {plans.map((plan) => {
+            const active = (activePkg?.identifier ?? null) === plan.identifier;
             return (
               <Pressable
-                key={pkg.identifier}
+                key={plan.identifier}
                 style={[styles.plan, active && styles.planActive]}
-                onPress={() => setSelected(pkg.identifier)}
+                onPress={() => setSelected(plan.identifier)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={`${plan.label}, ${plan.priceString} ${plan.cadence ?? ""}`}
               >
-                <Text style={[styles.planName, active && styles.planNameActive]}>
-                  {pkg.product.title}
-                </Text>
-                <Text style={[styles.planPrice, active && styles.planNameActive]}>
-                  {pkg.product.priceString}
-                </Text>
+                <View style={styles.planRadio}>
+                  {active ? <View style={styles.planRadioDot} /> : null}
+                </View>
+                <View style={styles.planText}>
+                  <View style={styles.planTitleRow}>
+                    <Text style={[styles.planName, active && styles.planNameActive]}>
+                      {plan.label}
+                    </Text>
+                    {plan.badge ? (
+                      <View style={styles.badge}>
+                        <Text style={styles.badgeText}>{plan.badge}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  {plan.perMonthNote ? (
+                    <Text style={styles.planNote}>{plan.perMonthNote}</Text>
+                  ) : null}
+                </View>
+                <View style={styles.planPriceCol}>
+                  <Text style={[styles.planPrice, active && styles.planNameActive]}>
+                    {plan.priceString}
+                  </Text>
+                  {plan.cadence ? <Text style={styles.planNote}>{plan.cadence}</Text> : null}
+                </View>
               </Pressable>
             );
           })}
@@ -168,21 +194,48 @@ const styles = StyleSheet.create({
   features: { marginTop: 20, gap: 12 },
   featureRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   featureText: { fontSize: 14, fontFamily: fonts.sans600, color: colors.ink },
-  plans: { flexDirection: "row", gap: 10, marginTop: 24 },
+  plans: { gap: 10, marginTop: 24 },
   plan: {
-    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
     backgroundColor: colors.surface,
     borderWidth: 1.5,
     borderColor: colors.borderButton,
     borderRadius: spacing.cardRadius,
-    padding: 16,
-    alignItems: "center",
-    gap: 6,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
   },
   planActive: { borderColor: colors.accent, backgroundColor: colors.accentWash },
-  planName: { fontSize: 13, fontFamily: fonts.sans700, color: colors.slate },
+  planRadio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: colors.borderCircle,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  planRadioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.accent },
+  planText: { flex: 1, gap: 3 },
+  planTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  planPriceCol: { alignItems: "flex-end", gap: 3 },
+  planName: { fontSize: 14, fontFamily: fonts.sans700, color: colors.ink },
   planNameActive: { color: colors.accent },
+  planNote: { fontSize: 11.5, fontFamily: fonts.sans500, color: colors.slate },
   planPrice: { fontSize: 17, fontFamily: fonts.mono700, color: colors.ink },
+  badge: {
+    backgroundColor: colors.accent,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  badgeText: {
+    fontSize: 9.5,
+    fontFamily: fonts.sans700,
+    letterSpacing: 0.4,
+    color: colors.white,
+  },
   cta: { marginTop: 24 },
   restore: {
     marginTop: 16,

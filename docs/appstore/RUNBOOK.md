@@ -19,13 +19,19 @@ Prereqs: bundle id is `com.fasttrackapp.mobile`, version `1.0.0` build `1`.
 
 ## 3. Subscriptions + RevenueCat
 - In App Store Connect → your app → Subscriptions: create a Subscription Group ("FastTrack Pro"),
-  then two products: **Pro Monthly** (`pro_monthly`) and **Pro Annual** (`pro_annual`). Set prices.
-  Optionally add a 7-day free-trial intro offer on the annual product.
+  then three products at the prices in `docs/appstore/pricing.md`:
+  **Pro Weekly** (`pro_weekly`, $4.99/wk), **Pro Monthly** (`pro_monthly`, $14.99/mo),
+  **Pro Annual** (`pro_annual`, $99.99/yr).
+  All three go in the **same** subscription group so users can move between them without
+  double-billing. Optionally add a 7-day free-trial intro offer on the annual product only.
 - Add the required localized display name + description for each; add a review screenshot.
 - Create a RevenueCat account (https://app.revenuecat.com), add a Project, add an **App** (App Store)
   with your bundle id and the App-Specific Shared Secret (from App Store Connect → App Information).
-- In RevenueCat: create an **Entitlement** with identifier exactly `pro`; attach both products to it.
-  Create an **Offering** named `default` with a monthly + annual package pointing at the two products.
+- In RevenueCat: create an **Entitlement** with identifier exactly `pro`; attach all three products to it.
+  Create an **Offering** named `default` with a **weekly + monthly + annual** package
+  (use RevenueCat's predefined `$rc_weekly` / `$rc_monthly` / `$rc_annual` identifiers — the
+  paywall orders and badges plans off the package type, so custom identifiers fall back to
+  the raw store product title).
 - Copy the RevenueCat **iOS public SDK key** (Project → API keys, the "public app-specific" key for Apple).
 
 ## 4. Local env + EAS
