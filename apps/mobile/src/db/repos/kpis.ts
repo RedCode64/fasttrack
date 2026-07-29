@@ -121,12 +121,36 @@ export async function monthKpis(ctx: DbCtx, orgId: string): Promise<MonthKpis> {
 }
 
 import type { LedgerExpense, LedgerPayment } from "../../lib/csvExport";
+import type { LedgerRange } from "../../lib/dateRange";
 
-/** Cash-ledger rows for the accountant CSV export: money in, money out. */
+/**
+ * Builds the inclusive date filter for a ledger query.
+ *
+ * Compares the first 10 characters rather than the raw column: `payments.paid_at`
+ * holds a full ISO instant while `expenses.spent_at` can be date-only, so a bare
+ * `>=` against a `YYYY-MM-DD` bound would silently drop same-day payments. ISO
+ * dates also sort correctly as strings, so no date parsing is needed.
+ */
+function dateFilter(column: string, range: LedgerRange | undefined) {
+  if (!range?.startDate || !range.endDate) return { sql: "", params: [] as string[] };
+  return {
+    sql: ` AND substr(${column}, 1, 10) >= ? AND substr(${column}, 1, 10) <= ?`,
+    params: [range.startDate, range.endDate],
+  };
+}
+
+/**
+ * Cash-ledger rows for the accountant CSV export: money in, money out.
+ * An omitted or unbounded `range` exports the whole history.
+ */
 export async function ledgerForExport(
   ctx: DbCtx,
   orgId: string,
+  range?: LedgerRange,
 ): Promise<{ payments: LedgerPayment[]; expenses: LedgerExpense[] }> {
+  const paidFilter = dateFilter("p.paid_at", range);
+  const spentFilter = dateFilter("e.spent_at", range);
+
   const paymentRows = await ctx.driver.exec(
     `SELECT p.paid_at AS paid_at, p.amount_cents AS amount_cents, p.method AS method,
             i.number AS invoice_number, c.name AS client_name
@@ -134,18 +158,18 @@ export async function ledgerForExport(
      JOIN invoices i ON i.id = p.invoice_id
      JOIN jobs j ON j.id = i.job_id
      JOIN clients c ON c.id = j.client_id
-     WHERE p.org_id = ? AND p.deleted_at IS NULL
+     WHERE p.org_id = ? AND p.deleted_at IS NULL${paidFilter.sql}
      ORDER BY p.paid_at ASC`,
-    [orgId],
+    [orgId, ...paidFilter.params],
   );
   const expenseRows = await ctx.driver.exec(
     `SELECT e.spent_at AS spent_at, e.amount_cents AS amount_cents,
             COALESCE(e.vendor, cat.name) AS party, cat.name AS category
      FROM expenses e
      JOIN expense_categories cat ON cat.id = e.category_id
-     WHERE e.org_id = ? AND e.deleted_at IS NULL
+     WHERE e.org_id = ? AND e.deleted_at IS NULL${spentFilter.sql}
      ORDER BY e.spent_at ASC`,
-    [orgId],
+    [orgId, ...spentFilter.params],
   );
   return {
     payments: paymentRows.map((row) => ({

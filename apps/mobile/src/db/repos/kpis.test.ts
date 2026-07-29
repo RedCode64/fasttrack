@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { addCustomLine, createDraft, markAccepted, sendEstimate } from "./estimateRepo";
 import { convertFromEstimate, recordPayment, sendInvoice } from "./invoiceRepo";
-import { activity, healthForOrg, monthKpis } from "./kpis";
+import { activity, healthForOrg, ledgerForExport, monthKpis } from "./kpis";
 import { createOrg } from "./orgRepo";
 import { createExpense, listCategories } from "./expenseRepo";
 import { createTestCtx, type TestCtx } from "./testUtils";
@@ -225,5 +225,111 @@ describe("activity", () => {
 
     const expense = items.find((i) => i.kind === "expense_logged");
     expect(expense?.targetId).toBe(expense?.id);
+  });
+});
+
+/**
+ * A ledger with one payment on the *final* day of June and expenses either side
+ * of the month boundary. The June payment carries a time component while the
+ * expenses are date-only, which is the mix the range filter has to survive.
+ */
+async function ledgerWorld(): Promise<{ t: TestCtx; orgId: string }> {
+  const t = await createTestCtx(NOW);
+  const org = await createOrg(t.ctx, {
+    name: "Reyes Electric",
+    trade: "electrical",
+    targetMarginBps: 3000,
+    taxRateBps: 0,
+  });
+
+  t.setNow("2026-06-02T10:00:00.000Z");
+  const est = await createDraft(t.ctx, org.id, {
+    newClientName: "Hartley",
+    jobTitle: "Deck lighting",
+  });
+  await addCustomLine(t.ctx, est.id, {
+    kind: "material",
+    description: "Fixtures",
+    quantity: 1,
+    unit: "ea",
+    unitCostCents: 50000,
+    markupPct: 5000,
+    isTaxable: false,
+  });
+  await sendEstimate(t.ctx, est.id);
+  await markAccepted(t.ctx, est.id);
+  const inv = await convertFromEstimate(t.ctx, est.id);
+  await sendInvoice(t.ctx, inv.id);
+
+  // Paid at 10:00 on 30 June — the last day the June range admits.
+  t.setNow("2026-06-30T10:00:00.000Z");
+  await recordPayment(t.ctx, inv.id, { amountCents: 75000, method: "check" });
+
+  const categories = await listCategories(t.ctx, org.id);
+  const materials = categories.find((c) => c.name === "Materials");
+  if (!materials) throw new Error("category missing");
+  for (const [spentAt, amountCents] of [
+    ["2026-05-31", 1100],
+    ["2026-06-01", 2200],
+    ["2026-06-30", 3300],
+    ["2026-07-01", 4400],
+  ] as const) {
+    await createExpense(t.ctx, org.id, {
+      categoryId: materials.id,
+      amountCents,
+      spentAt,
+      vendor: `V-${spentAt}`,
+      isBillable: false,
+    });
+  }
+
+  t.setNow(NOW);
+  return { t, orgId: org.id };
+}
+
+describe("ledgerForExport date range", () => {
+  const JUNE = { preset: "this_month", startDate: "2026-06-01", endDate: "2026-06-30" } as const;
+
+  it("exports everything when no range is given", async () => {
+    const { t, orgId } = await ledgerWorld();
+    const all = await ledgerForExport(t.ctx, orgId);
+    expect(all.payments).toHaveLength(1);
+    expect(all.expenses).toHaveLength(4);
+  });
+
+  it("keeps only rows inside the range, excluding the days either side", async () => {
+    const { t, orgId } = await ledgerWorld();
+    const june = await ledgerForExport(t.ctx, orgId, JUNE);
+    expect(june.expenses.map((e) => e.spentAtIso)).toEqual(["2026-06-01", "2026-06-30"]);
+  });
+
+  it("includes a payment timestamped on the final day of the range", async () => {
+    // Regression: comparing the raw column would make
+    // "2026-06-30T10:00:00.000Z" > "2026-06-30" and silently drop it.
+    const { t, orgId } = await ledgerWorld();
+    const june = await ledgerForExport(t.ctx, orgId, JUNE);
+    expect(june.payments).toHaveLength(1);
+    expect(june.payments[0]?.amountCents).toBe(75000);
+  });
+
+  it("returns nothing for a range with no activity", async () => {
+    const { t, orgId } = await ledgerWorld();
+    const empty = await ledgerForExport(t.ctx, orgId, {
+      preset: "this_month",
+      startDate: "2026-03-01",
+      endDate: "2026-03-31",
+    });
+    expect(empty.payments).toHaveLength(0);
+    expect(empty.expenses).toHaveLength(0);
+  });
+
+  it("treats a null-bounded range as unfiltered", async () => {
+    const { t, orgId } = await ledgerWorld();
+    const unbounded = await ledgerForExport(t.ctx, orgId, {
+      preset: "all",
+      startDate: null,
+      endDate: null,
+    });
+    expect(unbounded.expenses).toHaveLength(4);
   });
 });

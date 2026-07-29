@@ -10,6 +10,14 @@ import { useDb } from "@/db/DbProvider";
 import { ledgerForExport } from "@/db/repos/kpis";
 import { resetAllData } from "@/db/reset";
 import { buildLedgerCsv } from "@/lib/csvExport";
+import {
+  PRESET_LABELS,
+  PRESET_ORDER,
+  rangeFilenameSlug,
+  rangeFor,
+  rangeLabel,
+  type RangePreset,
+} from "@/lib/dateRange";
 import { shareCsv } from "@/lib/exportFile";
 import { clearSettings, loadSettings, saveSettings } from "@/lib/settings";
 import { colors, fonts, spacing } from "@/theme";
@@ -22,12 +30,17 @@ export default function SettingsScreen() {
   const [payLink, setPayLink] = useState(() => loadSettings().payLink ?? "");
   const [savedNote, setSavedNote] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [preset, setPreset] = useState<RangePreset>("this_month");
   const [exportNote, setExportNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [resetting, setResetting] = useState(false);
 
   if (!org) return null;
+
+  // Recomputed each render rather than memoised, so a session left open across
+  // midnight or a month boundary still exports the range the label promises.
+  const range = rangeFor(preset);
 
   const savePayLink = () => {
     const trimmed = payLink.trim();
@@ -41,16 +54,20 @@ export default function SettingsScreen() {
     setError(null);
     setExportNote(null);
     try {
-      const ledger = await ledgerForExport(ctx, org.id);
+      const ledger = await ledgerForExport(ctx, org.id, range);
       if (ledger.payments.length === 0 && ledger.expenses.length === 0) {
-        setExportNote("Nothing to export yet — record a payment or log an expense first.");
+        setExportNote(
+          range.preset === "all"
+            ? "Nothing to export yet — record a payment or log an expense first."
+            : `Nothing in ${rangeLabel(range)}. Try a wider range.`,
+        );
         return;
       }
       const csv = buildLedgerCsv(ledger);
-      const stamp = new Date().toISOString().slice(0, 10);
-      await shareCsv(`fasttrack-ledger-${stamp}.csv`, csv);
+      // The range goes in the filename so two exports never look interchangeable.
+      await shareCsv(`fasttrack-ledger-${rangeFilenameSlug(range)}.csv`, csv);
       setExportNote(
-        `Exported ${ledger.payments.length} payment${ledger.payments.length === 1 ? "" : "s"} and ${ledger.expenses.length} expense${ledger.expenses.length === 1 ? "" : "s"}.`,
+        `${rangeLabel(range)}: ${ledger.payments.length} payment${ledger.payments.length === 1 ? "" : "s"} and ${ledger.expenses.length} expense${ledger.expenses.length === 1 ? "" : "s"}.`,
       );
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not export the ledger");
@@ -118,8 +135,28 @@ export default function SettingsScreen() {
             A cash ledger — payments in, expenses out — as a CSV your bookkeeper can
             import into QuickBooks, Xero, or a spreadsheet.
           </Text>
+
+          <View style={styles.segment}>
+            {PRESET_ORDER.map((value) => (
+              <Pressable
+                key={value}
+                style={[styles.segmentItem, preset === value && styles.segmentActive]}
+                onPress={() => {
+                  setPreset(value);
+                  setExportNote(null);
+                }}
+              >
+                <Text
+                  style={[styles.segmentText, preset === value && styles.segmentTextActive]}
+                >
+                  {PRESET_LABELS[value]}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
           <GhostButton
-            label={exporting ? "Preparing…" : "Export cash ledger (CSV)"}
+            label={exporting ? "Preparing…" : `Export ${rangeLabel(range)} (CSV)`}
             icon="share"
             onPress={exportLedger}
             disabled={exporting}
@@ -239,6 +276,34 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   save: { marginTop: 12 },
+  segment: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 14,
+  },
+  segmentItem: {
+    flexGrow: 1,
+    flexBasis: "45%",
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderButton,
+    alignItems: "center",
+  },
+  segmentActive: {
+    backgroundColor: colors.navy,
+    borderColor: colors.navy,
+  },
+  segmentText: {
+    fontSize: 12.5,
+    fontFamily: fonts.sans600,
+    color: colors.slate,
+  },
+  segmentTextActive: {
+    color: colors.white,
+  },
   note: { fontSize: 12, fontFamily: fonts.sans600, color: colors.green, marginTop: 10 },
   error: { fontSize: 12.5, fontFamily: fonts.sans600, color: colors.red, marginTop: 10 },
 });
