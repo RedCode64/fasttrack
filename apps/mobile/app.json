@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.fasttrackapp.mobile",
-      "buildNumber": "10",
+      "buildNumber": "11",
       "icon": "./assets/images/icon.png",
       "supportsTablet": false,
       "infoPlist": {
